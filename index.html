@@ -1,0 +1,1478 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MRP Capsula3</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap');
+:root{
+  --bg:#f5f4f0;--surface:#fff;--surface2:#f0efe9;--border:#d8d6cc;--border2:#c8c6ba;
+  --text:#1a1a18;--text2:#5a5a52;--text3:#9a9a90;
+  --accent:#2a5a3a;--accent-light:#e8f2eb;--accent-text:#1e4229;
+  --warn:#7a4a10;--warn-light:#fef3e2;
+  --danger:#8a2020;--danger-light:#fdf0f0;
+  --info:#1a4a9a;--info-light:#e8f0fa;
+  --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
+  --radius:6px;--radius-lg:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:13px;line-height:1.5;min-height:100vh}
+
+/* AUTH */
+.auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--text)}
+.auth-box{background:var(--surface);border-radius:var(--radius-lg);padding:2.5rem;width:100%;max-width:400px}
+.auth-logo{text-align:center;margin-bottom:1.5rem}
+.auth-logo h1{font-size:22px;font-weight:500;letter-spacing:-.02em;margin-top:.75rem}
+.auth-logo p{font-size:12px;color:var(--text3);margin-top:4px}
+.auth-form label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px;margin-top:1rem}
+.auth-form input{width:100%;border:1px solid var(--border2);border-radius:var(--radius);padding:10px 12px;font-size:13px;font-family:var(--sans);background:var(--surface);color:var(--text)}
+.auth-form input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(42,90,58,.1)}
+.auth-btn{width:100%;margin-top:1.5rem;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);padding:11px;font-size:13px;font-weight:500;cursor:pointer;font-family:var(--sans)}
+.auth-btn:hover{background:var(--accent-text)}
+.auth-err{color:var(--danger);font-size:12px;margin-top:.75rem;text-align:center}
+.auth-link{text-align:center;font-size:12px;color:var(--text3);margin-top:1rem;cursor:pointer}
+.auth-link span{color:var(--accent);cursor:pointer}
+
+/* HEADER */
+.header{background:var(--text);color:#fff;padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;height:52px;position:sticky;top:0;z-index:100}
+.header-logo{font-family:var(--mono);font-size:13px;font-weight:500;letter-spacing:.04em;display:flex;align-items:center;gap:10px}
+.header-logo span{opacity:.4;font-weight:400}
+.header-right{display:flex;align-items:center;gap:12px}
+.user-badge{font-size:12px;display:flex;align-items:center;gap:8px}
+.user-badge .role{background:rgba(255,255,255,.15);padding:2px 8px;border-radius:3px;font-size:11px;font-family:var(--mono)}
+.header-actions{display:flex;gap:8px}
+
+/* LAYOUT */
+.layout{display:flex;min-height:calc(100vh - 52px);min-width:0}
+.sidebar{width:220px;min-width:220px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);padding:1.5rem 0;display:flex;flex-direction:column;gap:2px;position:sticky;top:52px;height:calc(100vh - 52px);overflow-y:auto;transition:width .2s,min-width .2s}
+.sidebar.collapsed{width:0;min-width:0;padding:0;overflow:hidden;border:none}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 1.25rem;cursor:pointer;color:var(--text2);font-size:12.5px;border-left:2px solid transparent;transition:all .12s;user-select:none}
+.nav-item:hover{background:var(--surface2);color:var(--text)}
+.nav-item.active{background:var(--accent-light);color:var(--accent-text);border-left-color:var(--accent);font-weight:500}
+.nav-icon{width:16px;height:16px;opacity:.6;flex-shrink:0}
+.nav-item.active .nav-icon{opacity:1}
+.nav-section{font-size:10px;font-weight:500;letter-spacing:.08em;color:var(--text3);padding:12px 1.25rem 4px;text-transform:uppercase}
+.main{flex:1;padding:2rem;display:flex;flex-direction:column;gap:1.25rem;overflow-x:hidden}
+.panel{display:none}.panel.active{display:contents}
+
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden}
+.card-header{padding:.75rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface2);flex-wrap:wrap;gap:8px}
+.card-title{font-size:12px;font-weight:500;letter-spacing:.04em;color:var(--text2);text-transform:uppercase}
+.card-body{padding:1.25rem}
+.page-title{font-size:20px;font-weight:300;letter-spacing:-.02em}
+.page-sub{font-size:12px;color:var(--text3);margin-top:3px}
+
+/* FORMS */
+.form-grid{display:grid;grid-template-columns:220px 1fr;gap:8px 16px;align-items:center;max-width:580px}
+.form-label{font-size:12px;color:var(--text2)}
+input[type=text],input[type=number],input[type=email],input[type=password],input[type=date],input[type=time],select,textarea{
+  border:1px solid var(--border2);border-radius:var(--radius);padding:7px 10px;font-size:12.5px;
+  font-family:var(--sans);background:var(--surface);color:var(--text);width:100%;transition:border-color .12s}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(42,90,58,.1)}
+input[type=number]{text-align:right;font-family:var(--mono)}
+input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+input[type=number]{-moz-appearance:textfield}
+.inp-blue{color:#1a4a9a;font-weight:500}
+td input,td select{width:100%;max-width:100%!important;padding:4px 7px!important;font-size:12px!important;height:28px}
+
+/* BUTTONS */
+.btn{border:1px solid var(--border2);border-radius:var(--radius);padding:6px 14px;font-size:12px;font-family:var(--sans);background:var(--surface);color:var(--text);cursor:pointer;transition:all .12s;white-space:nowrap}
+.btn:hover{background:var(--surface2)}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:500}
+.btn-primary:hover{background:var(--accent-text)}
+.btn-sm{padding:4px 10px;font-size:11px}
+.btn-del{color:var(--danger);border-color:transparent;background:none;padding:3px 7px}
+.btn-del:hover{background:var(--danger-light)}
+.btn-danger{background:var(--danger);color:#fff;border-color:var(--danger)}
+
+/* TABLES */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;color:var(--text3);font-weight:500;font-size:11px;letter-spacing:.04em;text-transform:uppercase;padding:6px 8px;border-bottom:1px solid var(--border);white-space:nowrap;background:var(--surface2)}
+td{padding:6px 8px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--surface2)}
+.td-mono{font-family:var(--mono);font-size:12px;text-align:right}
+
+/* BADGES */
+.badge{display:inline-block;padding:2px 8px;border-radius:3px;font-size:10.5px;font-weight:500;font-family:var(--mono)}
+.badge-green{background:var(--accent-light);color:var(--accent-text)}
+.badge-warn{background:var(--warn-light);color:var(--warn)}
+.badge-blue{background:var(--info-light);color:var(--info)}
+.badge-gray{background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
+.badge-red{background:var(--danger-light);color:var(--danger)}
+
+/* METRICS */
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.metric{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:.875rem 1rem;min-height:80px;display:flex;flex-direction:column;justify-content:center}
+.metric-label{font-size:11px;color:var(--text3);margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em}
+.metric-val{font-size:18px;font-weight:300;font-family:var(--mono);letter-spacing:-.02em;word-break:break-all}
+.metric-val.green{color:var(--accent-text)}
+.metric-val.warn{color:var(--warn)}
+.metric-val.red{color:var(--danger)}
+
+/* UTILS */
+.divider{height:1px;background:var(--border);margin:1rem 0}
+.flex-between{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.flex-gap{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.text-mono{font-family:var(--mono)}
+.text-sm{font-size:11px;color:var(--text3)}
+.kol-row{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+.notif{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--text);color:#fff;padding:10px 16px;border-radius:var(--radius);font-size:12.5px;z-index:9999;opacity:0;transform:translateY(8px);transition:all .2s;pointer-events:none;font-family:var(--mono)}
+.notif.show{opacity:1;transform:translateY(0)}
+.empty{text-align:center;padding:3rem;color:var(--text3)}
+.import-zone{border:1.5px dashed var(--border2);border-radius:var(--radius-lg);padding:1.25rem;text-align:center;color:var(--text3);cursor:pointer;transition:all .12s;font-size:12px}
+.import-zone:hover{border-color:var(--accent);color:var(--accent-text);background:var(--accent-light)}
+.loading{display:flex;align-items:center;justify-content:center;padding:3rem;color:var(--text3);font-size:13px;gap:8px}
+.spinner{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+@media print{.sidebar,.header{display:none}.main{padding:0}.card{break-inside:avoid}}
+
+/* ROLE COLORS */
+.role-admin{background:#fdf0f0;color:#8a2020}
+.role-vodja{background:var(--info-light);color:var(--info)}
+.role-operater{background:var(--accent-light);color:var(--accent-text)}
+.role-racunovodstvo{background:var(--warn-light);color:var(--warn)}
+</style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div id="auth-screen" style="display:none">
+  <div class="auth-wrap">
+    <div class="auth-box">
+      <div class="auth-logo">
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+          <rect x="4" y="14" width="40" height="28" rx="4" fill="#2a5a3a"/>
+          <path d="M14 14V12a10 10 0 0 1 20 0v2" stroke="#2a5a3a" stroke-width="3"/>
+          <circle cx="24" cy="28" r="5" fill="white"/>
+        </svg>
+        <h1>MRP Capsula3</h1>
+        <p>Sistem za upravljanje proizvodnje kapsul</p>
+      </div>
+      <div id="auth-login" class="auth-form">
+        <label>E-pošta</label>
+        <input type="email" id="login-email" placeholder="vas@email.com" value="nejc@capsula3.com">
+        <label>Geslo</label>
+        <input type="password" id="login-pass" placeholder="••••••••">
+        <button class="auth-btn" onclick="prijava()">Prijava</button>
+        <div id="login-err" class="auth-err"></div>
+        <div class="auth-link">Pozabljeno geslo? <span onclick="resetGeslo()">Pošlji email</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-screen" style="display:none">
+  <div class="header">
+    <div class="header-logo">
+      <button onclick="toggleSidebar()" style="background:none;border:none;color:#fff;cursor:pointer;padding:4px 8px;font-size:16px;opacity:.7">☰</button>
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+        <rect x="1" y="5" width="16" height="11" rx="2" stroke="white" stroke-width="1.2"/>
+        <path d="M5 5V4a4 4 0 0 1 8 0v1" stroke="white" stroke-width="1.2"/>
+        <circle cx="9" cy="11" r="1.5" fill="white"/>
+      </svg>
+      MRP Capsula3
+      <span>v1.0</span>
+    </div>
+    <div class="header-right">
+      <div class="user-badge">
+        <span id="user-name" style="font-size:12px"></span>
+        <span id="user-role-badge" class="role"></span>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-sm" onclick="odjava()" style="color:#fff;border-color:rgba(255,255,255,.3);background:transparent">Odjava</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="layout">
+    <nav class="sidebar" id="sidebar">
+      <div class="nav-section">Pregled</div>
+      <div class="nav-item" onclick="showPanel('dashboard')">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 4a.5.5 0 0 1 .5.5V6a.5.5 0 0 1-1 0V4.5A.5.5 0 0 1 8 4zM3.732 5.732a.5.5 0 0 1 .707 0l.915.914a.5.5 0 1 1-.708.708l-.914-.915a.5.5 0 0 1 0-.707zM2 10a.5.5 0 0 1 .5-.5h1.586a.5.5 0 0 1 0 1H2.5A.5.5 0 0 1 2 10zm9.5 0a.5.5 0 0 1 .5-.5h1.5a.5.5 0 0 1 0 1H12a.5.5 0 0 1-.5-.5zm.754-4.246a.389.389 0 0 0-.527-.02L7.547 9.31a.91.91 0 1 0 1.302 1.258l3.434-4.297a.389.389 0 0 0-.029-.518z"/></svg>
+        Nadzorna plošča
+      </div>
+      <div class="nav-section">Ceniki</div>
+      <div class="nav-item" onclick="showPanel('cenik-sestavin');loadCenikSestavin()">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M0 2a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V2zm2-1a1 1 0 0 0-1 1v1h14V2a1 1 0 0 0-1-1H2zm13 4H1v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V5z"/></svg>
+        Cenik sestavin
+      </div>
+      <div class="nav-item" onclick="showPanel('cenik-kapsul');loadCenikKapsul()">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a2 2 0 0 1 2 2v.5h1.5A1.5 1.5 0 0 1 13 5v8.5a1.5 1.5 0 0 1-1.5 1.5h-7A1.5 1.5 0 0 1 3 13.5V5a1.5 1.5 0 0 1 1.5-1.5H6V3a2 2 0 0 1 2-2zm0 1a1 1 0 0 0-1 1v.5h2V3a1 1 0 0 0-1-1z"/></svg>
+        Cenik kapsul
+      </div>
+      <div class="nav-section" style="margin-top:8px">Serija</div>
+      <div class="nav-item active" onclick="showPanel('inputi')">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M14.5 3a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5h-13a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h13z"/></svg>
+        Inputi
+      </div>
+      <div class="nav-item" onclick="showPanel('formula')">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M0 2a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1v7.5a2.5 2.5 0 0 1-2.5 2.5h-9A2.5 2.5 0 0 1 1 12.5V5a1 1 0 0 1-1-1V2z"/></svg>
+        Formula
+      </div>
+      <div class="nav-section" style="margin-top:8px">Kalkulacija</div>
+      <div class="nav-item" onclick="izracunaj();showPanel('rezultat')">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M6 3.5a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 0 1h-8a.5.5 0 0 1-.5-.5zm0 4a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 0 1h-8a.5.5 0 0 1-.5-.5z"/></svg>
+        ▶ Izračunaj
+      </div>
+      <div class="nav-item" onclick="showPanel('rezultat')">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M11 2a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1h6z"/></svg>
+        Rezultat
+      </div>
+      <div class="nav-section" style="margin-top:8px">Produkcija</div>
+      <div class="nav-item" onclick="showPanel('nalogi');loadNalogi()">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M5 4a.5.5 0 0 0 0 1h6a.5.5 0 0 0 0-1H5z"/><path d="M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2z"/></svg>
+        Delovni nalogi
+      </div>
+      <div class="nav-section" style="margin-top:8px">Zaloga</div>
+      <div class="nav-item" onclick="showPanel('zaloga');loadZaloga()">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M0 3.5A1.5 1.5 0 0 1 1.5 2h9A1.5 1.5 0 0 1 12 3.5V5h1.5A1.5 1.5 0 0 1 15 6.5v8.25a.75.75 0 0 1-1.5 0V6.5a.5.5 0 0 0-.5-.5H12v8.5a1 1 0 0 1-1 1H1a1 1 0 0 1-1-1V3.5z"/></svg>
+        Pregled zaloge
+      </div>
+      <div class="nav-item" onclick="showPanel('prevzemnice');loadPrevzemnice()">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="M10.97 4.97a.75.75 0 0 1 1.071 1.05l-3.992 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425z"/></svg>
+        Prevzemnice
+      </div>
+      <div class="nav-section" style="margin-top:8px">CRM</div>
+      <div class="nav-item" onclick="showPanel('stranke');loadStranke()">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1H7zm4-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/></svg>
+        Stranke
+      </div>
+      <div id="admin-nav" style="display:none">
+        <div class="nav-section" style="margin-top:8px">Admin</div>
+        <div class="nav-item" onclick="showPanel('uporabniki');loadUporabniki()">
+          <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M3 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1H3zm5-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/></svg>
+          Uporabniki
+        </div>
+      </div>
+    </nav>
+
+    <main class="main" id="main-content">
+
+      <!-- NADZORNA PLOŠČA -->
+      <div id="panel-dashboard" class="panel">
+        <div><div class="page-title">Nadzorna plošča</div><div class="page-sub">Pregled MRP Capsula3</div></div>
+        <div class="metrics" id="dashboard-metrics">
+          <div class="metric"><div class="metric-label">Aktivni nalogi</div><div class="metric-val" id="dash-nalogi">—</div></div>
+          <div class="metric"><div class="metric-label">LOT-ov v zalogi</div><div class="metric-val" id="dash-zaloga">—</div></div>
+          <div class="metric"><div class="metric-label">Stranke</div><div class="metric-val" id="dash-stranke">—</div></div>
+          <div class="metric"><div class="metric-label">Expiry v 60 dneh</div><div class="metric-val warn" id="dash-expiry">—</div></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+          <div class="card">
+            <div class="card-header"><span class="card-title">Zadnji nalogi</span></div>
+            <div class="card-body" style="padding:.75rem" id="dash-nalogi-list"><div class="loading"><div class="spinner"></div>Nalagam…</div></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">Zaloga — opozorila</span></div>
+            <div class="card-body" style="padding:.75rem" id="dash-zaloga-list"><div class="loading"><div class="spinner"></div>Nalagam…</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CENIK SESTAVIN -->
+      <div id="panel-cenik-sestavin" class="panel">
+        <div class="flex-between">
+          <div><div class="page-title">Cenik sestavin</div><div class="page-sub">Centralni register z 8 cenovnimi razredi</div></div>
+          <div class="flex-gap">
+            <div style="position:relative">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" style="position:absolute;left:8px;top:50%;transform:translateY(-50%);opacity:.4;pointer-events:none"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.099zm-5.242 1.656a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11z"/></svg>
+              <input type="text" id="cs-search" placeholder="Iskanje…" oninput="filterCenikSestavin()" style="padding-left:28px;max-width:220px;font-size:12px">
+            </div>
+            <button class="btn btn-sm btn-primary" onclick="showCenikForm()">+ Dodaj</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-body" style="padding:.75rem">
+            <div class="tbl-wrap">
+            <table>
+              <thead><tr>
+                <th>Sestavina</th><th>Dobavitelj</th><th>Enota</th>
+                <th>1 kg</th><th>5 kg</th><th>10 kg</th><th>25 kg</th>
+                <th>50 kg</th><th>100 kg</th><th>500 kg</th><th>1000 kg</th>
+                <th>Min. nar.</th><th></th>
+              </tr></thead>
+              <tbody id="cenik-sestavin-body"></tbody>
+            </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CENIK KAPSUL -->
+      <div id="panel-cenik-kapsul" class="panel">
+        <div class="flex-between">
+          <div><div class="page-title">Cenik kapsul</div><div class="page-sub">Nabavne cene praznih kapsul</div></div>
+          <button class="btn btn-sm btn-primary" onclick="showKapsulaForm()">+ Dodaj</button>
+        </div>
+        <div class="card">
+          <div class="card-body" style="padding:.75rem">
+            <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>Velikost</th><th>Material</th><th>Dobavitelj</th><th class="td-right">Cena/1.000 kos (€)</th><th>Opomba</th><th></th></tr></thead>
+              <tbody id="cenik-kapsul-body"></tbody>
+            </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- INPUTI -->
+      <div id="panel-inputi" class="panel active">
+        <div><div class="page-title">Inputi serije</div><div class="page-sub">Modra polja spremenite za vsako serijo</div></div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Osnova</span></div>
+          <div class="card-body">
+            <div class="form-grid">
+              <label class="form-label">Stranka</label>
+              <div style="display:flex;gap:8px;align-items:center">
+                <select id="i-stranka" class="inp-blue" style="max-width:280px" onchange="onStrankaSelect()"><option value="">— Brez stranke —</option></select>
+              </div>
+              <label class="form-label">Naziv izdelka</label>
+              <input type="text" id="i-naziv" class="inp-blue" placeholder="npr. OmegaCaps 1000mg">
+              <label class="form-label">Tip kapsulacije</label>
+              <select id="i-tip" class="inp-blue" style="max-width:180px">
+                <option value="LIQUID">LIQUID CAPS</option>
+                <option value="PRAH">PRAH</option>
+                <option value="DUAL">DUAL</option>
+              </select>
+              <label class="form-label">Stroj</label>
+              <select id="i-stroj" class="inp-blue" style="max-width:240px"></select>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Količine za kalkulacijo</span><button class="btn btn-sm" onclick="addKol()">+ Dodaj</button></div>
+          <div class="card-body"><div id="kol-rows"></div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Kapsule</span></div>
+          <div class="card-body">
+            <div class="form-grid">
+              <label class="form-label">Izberi kapsulo</label>
+              <select id="i-kaps-select" class="inp-blue" style="max-width:280px" onchange="onKapsSelect()"><option value="">— Izberi —</option></select>
+              <label class="form-label">Cena (€/1.000 kos)</label>
+              <input type="number" id="i-cena-kaps" class="inp-blue" value="8.5" min="0" step="0.001" style="max-width:120px">
+              <label class="form-label">Odpad kapsul (%)</label>
+              <input type="number" id="i-odpad" class="inp-blue" value="3" min="0" step="0.1" style="max-width:90px">
+              <label class="form-label">Način pakiranja</label>
+              <select id="i-pakiranje" class="inp-blue" style="max-width:220px">
+                <option value="bulk">Bulk</option>
+                <option value="blistiranje">Blistiranje</option>
+                <option value="loncki">Pakiranje v lončke</option>
+              </select>
+              <label class="form-label">Marža (%)</label>
+              <input type="number" id="i-marza" class="inp-blue" value="20" min="0" step="1" style="max-width:90px">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FORMULA -->
+      <div id="panel-formula" class="panel">
+        <div class="flex-between">
+          <div><div class="page-title">Formula izdelka</div><div class="page-sub">Sestavine iz cenika — cena se potegne avtomatsko</div></div>
+          <div class="flex-gap">
+            <button class="btn btn-sm" onclick="shraniFormulo()">💾 Shrani formulo</button>
+            <button class="btn btn-sm btn-primary" onclick="addFormulaRow()">+ Dodaj sestavino</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-body" style="padding:.75rem">
+            <div class="tbl-wrap">
+            <table>
+              <thead><tr>
+                <th style="min-width:200px">Sestavina</th><th style="min-width:65px">Del</th>
+                <th style="min-width:100px">Kol./kapsulo</th><th style="min-width:60px">Enota</th>
+                <th style="min-width:75px">Izguba (%)</th><th style="min-width:95px">Min. obr. (kg)</th>
+                <th style="min-width:130px">Dobavitelj</th><th style="min-width:140px">Razpon cen</th>
+                <th style="width:36px"></th>
+              </tr></thead>
+              <tbody id="formula-body"></tbody>
+            </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- REZULTAT -->
+      <div id="panel-rezultat" class="panel">
+        <div id="rezultat-wrap"><div class="empty">Kliknite ▶ Izračunaj v meniju.</div></div>
+      </div>
+
+      <!-- DELOVNI NALOGI -->
+      <div id="panel-nalogi" class="panel">
+        <div class="flex-between">
+          <div><div class="page-title">Delovni nalogi</div><div class="page-sub">Evidenca vseh nalogov</div></div>
+          <button class="btn btn-sm btn-primary" onclick="novNalog()">+ Nov nalog</button>
+        </div>
+        <div class="card">
+          <div class="card-body" style="padding:.75rem">
+            <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>Številka</th><th>Naziv</th><th>Stranka</th><th>Datum</th><th>Rok</th><th>Količina</th><th>Status</th><th></th></tr></thead>
+              <tbody id="nalogi-body"></tbody>
+            </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ZALOGA -->
+      <div id="panel-zaloga" class="panel">
+        <div class="flex-between">
+          <div><div class="page-title">Pregled zaloge</div><div class="page-sub">Vsak LOT kot samostojna enota</div></div>
+          <div class="flex-gap">
+            <input type="text" id="zaloga-search" placeholder="Iskanje…" oninput="filterZaloga()" style="max-width:200px;font-size:12px">
+            <button class="btn btn-sm btn-primary" onclick="showPanel('nova-prevzemnica')">+ Prevzemnica</button>
+          </div>
+        </div>
+        <div class="metrics" id="zaloga-metrics" style="margin-bottom:1rem"></div>
+        <div class="card">
+          <div class="card-body" style="padding:.75rem">
+            <div class="tbl-wrap">
+            <table>
+              <thead><tr>
+                <th>Sestavina</th><th>LOT</th><th>Enota</th><th class="td-right">Količina</th>
+                <th class="td-right">Cena/enoto</th><th class="td-right">Vrednost</th>
+                <th>Expiry</th><th>COA</th><th>Status</th><th></th>
+              </tr></thead>
+              <tbody id="zaloga-body"></tbody>
+            </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PREVZEMNICE -->
+      <div id="panel-prevzemnice" class="panel">
+        <div class="flex-between">
+          <div><div class="page-title">Prevzemnice</div><div class="page-sub">Evidenca prevzemov materiala</div></div>
+          <button class="btn btn-sm btn-primary" onclick="showPanel('nova-prevzemnica')">+ Nova prevzemnica</button>
+        </div>
+        <div id="prevzemnice-lista"></div>
+      </div>
+
+      <!-- NOVA PREVZEMNICA -->
+      <div id="panel-nova-prevzemnica" class="panel">
+        <div class="flex-between">
+          <div><div class="page-title">Nova prevzemnica</div><div class="page-sub">Naložite račun — Claude prebere artikle, cene in količine</div></div>
+          <div class="flex-gap">
+            <button class="btn btn-sm" onclick="showPanel('prevzemnice');loadPrevzemnice()">← Nazaj</button>
+            <button class="btn btn-sm btn-primary" onclick="potrdiPrevzemnico()">✓ Potrdi prevzem</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Osnovni podatki</span></div>
+          <div class="card-body">
+            <div class="form-grid" style="max-width:560px">
+              <label class="form-label">Številka prevzemnice</label>
+              <input type="text" id="prv-stevilka" class="inp-blue" style="max-width:200px">
+              <label class="form-label">Datum prevzema</label>
+              <input type="date" id="prv-datum" class="inp-blue" style="max-width:180px">
+              <label class="form-label">Dobavitelj</label>
+              <input type="text" id="prv-dobavitelj" class="inp-blue" style="max-width:280px">
+              <label class="form-label">Številka računa</label>
+              <input type="text" id="prv-racun-st" class="inp-blue" style="max-width:200px">
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Račun dobavitelja</span><span class="text-sm" id="racun-status">— ni naložen</span></div>
+          <div class="card-body" style="padding:.75rem">
+            <div class="import-zone" onclick="this.querySelector('input').click()">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:block;margin:0 auto 6px;opacity:.4"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+              Naložite PDF račun — Claude prebere artikle, količine in cene
+              <input type="file" accept=".pdf" style="display:none" onchange="beriRacun(this)">
+            </div>
+          </div>
+        </div>
+        <div class="card" id="prv-artikli-card" style="display:none">
+          <div class="card-header"><span class="card-title">Artikli iz računa</span><span class="text-sm">Preverite ujemanje in naložite COA</span></div>
+          <div class="card-body" style="padding:.75rem"><div id="prv-artikli-list"></div></div>
+        </div>
+      </div>
+
+      <!-- STRANKE -->
+      <div id="panel-stranke" class="panel">
+        <div class="flex-between">
+          <div><div class="page-title">Stranke</div><div class="page-sub">CRM — baza strank</div></div>
+          <div class="flex-gap">
+            <input type="text" id="stranke-search" placeholder="Iskanje…" oninput="filterStranke()" style="max-width:200px;font-size:12px">
+            <button class="btn btn-sm btn-primary" onclick="showStrankaForm()">+ Nova stranka</button>
+          </div>
+        </div>
+        <div id="stranke-lista"></div>
+      </div>
+
+      <!-- UPORABNIKI (Admin) -->
+      <div id="panel-uporabniki" class="panel">
+        <div class="flex-between">
+          <div><div class="page-title">Upravljanje uporabnikov</div><div class="page-sub">Vloge in dostopi</div></div>
+          <button class="btn btn-sm btn-primary" onclick="showPovabiloForm()">+ Povabi uporabnika</button>
+        </div>
+        <div class="card">
+          <div class="card-body" style="padding:.75rem">
+            <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>Ime</th><th>Email</th><th>Vloga</th><th>Status</th><th></th></tr></thead>
+              <tbody id="uporabniki-body"></tbody>
+            </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- MODALI -->
+<div id="modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;display:none;align-items:center;justify-content:center">
+  <div id="modal-box" style="background:var(--surface);border-radius:var(--radius-lg);padding:1.5rem;max-width:540px;width:100%;max-height:90vh;overflow-y:auto;margin:1rem"></div>
+</div>
+
+<div id="notif" class="notif"></div>
+
+<script>
+// ── CONFIG — zamenjajte z vašimi Supabase kredenciali ──────
+const SUPABASE_URL = 'https://YOUR_PROJECT.supabase.co';
+const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
+// ────────────────────────────────────────────────────────────
+
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Lokalni state
+let currentUser = null;
+let currentProfile = null;
+let cenikSestavinData = [];
+let cenikKapsulData = [];
+let strankeData = [];
+let formulaData = [];
+let kolicine = [500000, 1000000];
+let strojData = [];
+let novaPrv = {stevilka:'',datum:'',dobavitelj:'',racun_st:'',artikli:[]};
+let zalogaData = [];
+
+// ── HELPERS ────────────────────────────────────────────────
+function f2(n){return(+n).toLocaleString('sl-SI',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function f4(n){return(+n).toLocaleString('sl-SI',{minimumFractionDigits:4,maximumFractionDigits:4});}
+function fN(n){return Math.round(n).toLocaleString('sl-SI');}
+
+function notif(msg,dur=2200){
+  const el=document.getElementById('notif');
+  el.textContent=msg;el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),dur);
+}
+
+function showModal(html){
+  const ov=document.getElementById('modal-overlay');
+  document.getElementById('modal-box').innerHTML=html;
+  ov.style.display='flex';
+}
+function hideModal(){document.getElementById('modal-overlay').style.display='none';}
+document.getElementById('modal-overlay').addEventListener('click',e=>{if(e.target===e.currentTarget)hideModal();});
+
+function toggleSidebar(){document.getElementById('sidebar').classList.toggle('collapsed');}
+
+function showPanel(id){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  const panel=document.getElementById('panel-'+id);
+  if(panel)panel.classList.add('active');
+  const nav=document.querySelector(`[onclick*="showPanel('${id}')"]`);
+  if(nav)nav.classList.add('active');
+}
+
+function getRoleLabel(role){
+  const map={admin:'Admin',vodja:'Vodja',operater:'Operater',racunovodstvo:'Računovodstvo'};
+  return map[role]||role;
+}
+function getRoleClass(role){
+  const map={admin:'badge-red',vodja:'badge-blue',operater:'badge-green',racunovodstvo:'badge-warn'};
+  return map[role]||'badge-gray';
+}
+
+// ── AVTENTIKACIJA ──────────────────────────────────────────
+async function initAuth(){
+  const{data:{session}}=await sb.auth.getSession();
+  if(session){
+    await loadUserProfile(session.user);
+    showApp();
+  } else {
+    showAuth();
+  }
+  sb.auth.onAuthStateChange(async(event,session)=>{
+    if(event==='SIGNED_IN'&&session){
+      await loadUserProfile(session.user);
+      showApp();
+    } else if(event==='SIGNED_OUT'){
+      currentUser=null;currentProfile=null;
+      showAuth();
+    }
+  });
+}
+
+async function loadUserProfile(user){
+  currentUser=user;
+  const{data}=await sb.from('profiles').select('*').eq('id',user.id).single();
+  currentProfile=data;
+  const nameEl=document.getElementById('user-name');
+  const roleEl=document.getElementById('user-role-badge');
+  if(nameEl)nameEl.textContent=(data?.ime&&data?.priimek)?`${data.ime} ${data.priimek}`:user.email;
+  if(roleEl){roleEl.textContent=getRoleLabel(data?.vloga);roleEl.className='role';}
+  // Pokaži admin nav
+  if(data?.vloga==='admin'){
+    const adminNav=document.getElementById('admin-nav');
+    if(adminNav)adminNav.style.display='block';
+  }
+}
+
+function showAuth(){
+  document.getElementById('auth-screen').style.display='block';
+  document.getElementById('app-screen').style.display='none';
+}
+function showApp(){
+  document.getElementById('auth-screen').style.display='none';
+  document.getElementById('app-screen').style.display='block';
+  loadDashboard();
+  loadStrankeForSelect();
+  loadStrojiForSelect();
+  loadCenikSestavineForFormula();
+  loadCenikKapsulForSelect();
+}
+
+async function prijava(){
+  const email=document.getElementById('login-email').value;
+  const pass=document.getElementById('login-pass').value;
+  const errEl=document.getElementById('login-err');
+  errEl.textContent='';
+  const{error}=await sb.auth.signInWithPassword({email,password:pass});
+  if(error)errEl.textContent=error.message;
+}
+
+async function odjava(){await sb.auth.signOut();}
+
+async function resetGeslo(){
+  const email=document.getElementById('login-email').value;
+  if(!email){document.getElementById('login-err').textContent='Vnesite email';return;}
+  const{error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin});
+  document.getElementById('login-err').textContent=error?error.message:'✓ Email za reset poslan';
+}
+
+// ── DASHBOARD ──────────────────────────────────────────────
+async function loadDashboard(){
+  try{
+    const[{count:cNalogi},{count:cZaloga},{count:cStranke},{data:expData}]=await Promise.all([
+      sb.from('delovni_nalogi').select('*',{count:'exact',head:true}).in('status',['caka','priprava','produkcija']),
+      sb.from('zaloga').select('*',{count:'exact',head:true}).eq('status','aktivna'),
+      sb.from('stranke').select('*',{count:'exact',head:true}),
+      sb.from('zaloga').select('id,expiry_date').eq('status','aktivna').lte('expiry_date',new Date(Date.now()+60*24*3600*1000).toISOString().slice(0,10)).not('expiry_date','is',null)
+    ]);
+    document.getElementById('dash-nalogi').textContent=cNalogi||0;
+    document.getElementById('dash-zaloga').textContent=cZaloga||0;
+    document.getElementById('dash-stranke').textContent=cStranke||0;
+    document.getElementById('dash-expiry').textContent=expData?.length||0;
+
+    // Zadnji nalogi
+    const{data:nalogi}=await sb.from('delovni_nalogi').select('stevilka,naziv,status,datum_sprejem').order('created_at',{ascending:false}).limit(5);
+    const nEl=document.getElementById('dash-nalogi-list');
+    nEl.innerHTML=nalogi?.length?nalogi.map(n=>`
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px">
+        <span style="font-family:var(--mono);color:var(--info)">${n.stevilka}</span>
+        <span style="font-weight:500">${n.naziv}</span>
+        <span class="badge ${statusBadgeClass(n.status)}">${n.status}</span>
+      </div>`).join(''):'<div class="text-sm">Ni nalogov.</div>';
+
+    // Expiry opozorila
+    const{data:expLots}=await sb.from('zaloga').select('sestavina_ime,lot,expiry_date,kolicina').eq('status','aktivna').lte('expiry_date',new Date(Date.now()+60*24*3600*1000).toISOString().slice(0,10)).not('expiry_date','is',null).order('expiry_date');
+    const eEl=document.getElementById('dash-zaloga-list');
+    eEl.innerHTML=expLots?.length?expLots.map(z=>`
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px">
+        <span style="font-weight:500">${z.sestavina_ime}</span>
+        <span class="text-mono">${z.lot||'—'}</span>
+        <span style="color:var(--warn)">${z.expiry_date}</span>
+      </div>`).join(''):'<div class="text-sm" style="color:var(--accent-text)">✓ Ni bližajočih expiry datumov.</div>';
+  }catch(e){console.error(e);}
+}
+
+function statusBadgeClass(s){
+  const m={caka:'badge-gray',priprava:'badge-blue',produkcija:'badge-warn',zakljuceno:'badge-green',zavrnjeno:'badge-red'};
+  return m[s]||'badge-gray';
+}
+
+// ── CENIK SESTAVIN ─────────────────────────────────────────
+const TIER_KG=[1,5,10,25,50,100,500,1000];
+const TIER_COLS=['cena_1kg','cena_5kg','cena_10kg','cena_25kg','cena_50kg','cena_100kg','cena_500kg','cena_1000kg'];
+
+async function loadCenikSestavin(){
+  const{data}=await sb.from('cenik_sestavin').select('*').order('ime');
+  cenikSestavineData=data||[];
+  renderCenikSestavin();
+}
+
+async function loadCenikSestavineForFormula(){
+  const{data}=await sb.from('cenik_sestavin').select('*').order('ime');
+  cenikSestavineData=data||[];
+  renderFormula();
+}
+
+function renderCenikSestavin(){
+  const q=(document.getElementById('cs-search')?.value||'').toLowerCase();
+  const filtered=(cenikSestavineData||[]).filter(c=>!q||c.ime.toLowerCase().includes(q)||(c.dobavitelj||'').toLowerCase().includes(q));
+  const body=document.getElementById('cenik-sestavin-body');
+  if(!body)return;
+  body.innerHTML=filtered.map(c=>`<tr>
+    <td style="font-weight:500">${c.ime}</td>
+    <td>${c.dobavitelj||'—'}</td>
+    <td>${c.enota||'kg'}</td>
+    ${TIER_COLS.map(col=>`<td class="td-mono">${c[col]?f2(c[col]):'—'}</td>`).join('')}
+    <td class="td-mono">${c.min_narocilo||0}</td>
+    <td><div style="display:flex;gap:4px">
+      <button class="btn btn-sm" onclick="editCenikSestavina('${c.id}')">✎</button>
+      <button class="btn btn-del" onclick="deleteCenikSestavina('${c.id}')">✕</button>
+    </div></td>
+  </tr>`).join('');
+}
+
+function filterCenikSestavin(){renderCenikSestavin();}
+
+function showCenikForm(id){
+  const c=id?cenikSestavineData.find(x=>x.id===id):{};
+  showModal(`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+      <div style="font-size:15px;font-weight:500">${id?'Uredi sestavino':'Nova sestavina'}</div>
+      <button class="btn btn-sm" onclick="hideModal()">✕</button>
+    </div>
+    <div class="form-grid" style="max-width:100%">
+      <label class="form-label">Ime sestavine</label>
+      <input type="text" id="cs-ime" value="${c.ime||''}" placeholder="npr. Fish oil EPA/DHA">
+      <label class="form-label">Dobavitelj</label>
+      <input type="text" id="cs-dobavitelj" value="${c.dobavitelj||''}">
+      <label class="form-label">Enota</label>
+      <select id="cs-enota" style="max-width:80px">
+        <option${(c.enota||'kg')==='kg'?' selected':''}>kg</option>
+        <option${c.enota==='l'?' selected':''}>l</option>
+      </select>
+      ${TIER_KG.map((kg,ti)=>`
+      <label class="form-label">Cena ${kg} kg (€)</label>
+      <input type="number" id="cs-t${ti}" value="${c[TIER_COLS[ti]]||''}" placeholder="—" step="0.01" style="max-width:130px">
+      `).join('')}
+      <label class="form-label">Min. naročilo (kg)</label>
+      <input type="number" id="cs-min" value="${c.min_narocilo||0}" min="0" style="max-width:120px">
+      <label class="form-label">Opomba</label>
+      <input type="text" id="cs-opomba" value="${c.opomba||''}">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:1.5rem;justify-content:flex-end">
+      <button class="btn" onclick="hideModal()">Prekliči</button>
+      <button class="btn btn-primary" onclick="saveCenikSestavina('${id||''}')">Shrani</button>
+    </div>`);
+}
+
+function editCenikSestavina(id){showCenikForm(id);}
+
+async function saveCenikSestavina(id){
+  const obj={
+    ime:document.getElementById('cs-ime').value,
+    dobavitelj:document.getElementById('cs-dobavitelj').value,
+    enota:document.getElementById('cs-enota').value,
+    min_narocilo:+document.getElementById('cs-min').value||0,
+    opomba:document.getElementById('cs-opomba').value,
+    updated_at:new Date().toISOString(),
+  };
+  TIER_KG.forEach((_,ti)=>{
+    const v=document.getElementById(`cs-t${ti}`).value;
+    obj[TIER_COLS[ti]]=v?+v:null;
+  });
+  if(id){await sb.from('cenik_sestavin').update(obj).eq('id',id);}
+  else{obj.created_at=new Date().toISOString();await sb.from('cenik_sestavin').insert(obj);}
+  hideModal();await loadCenikSestavin();await loadCenikSestavineForFormula();
+  notif('✓ Sestavina shranjena');
+}
+
+async function deleteCenikSestavina(id){
+  if(!confirm('Izbrisati sestavino?'))return;
+  await sb.from('cenik_sestavin').delete().eq('id',id);
+  await loadCenikSestavin();notif('✓ Izbrisano');
+}
+
+// ── CENIK KAPSUL ───────────────────────────────────────────
+async function loadCenikKapsul(){
+  const{data}=await sb.from('cenik_kapsul').select('*').order('velikost');
+  cenikKapsulData=data||[];
+  renderCenikKapsul();
+}
+async function loadCenikKapsulForSelect(){
+  const{data}=await sb.from('cenik_kapsul').select('*').order('velikost');
+  cenikKapsulData=data||[];
+  syncKapsSelect();
+}
+function renderCenikKapsul(){
+  const body=document.getElementById('cenik-kapsul-body');
+  if(!body)return;
+  body.innerHTML=(cenikKapsulData||[]).map(k=>`<tr>
+    <td style="font-weight:500">${k.velikost}</td>
+    <td>${k.material}</td><td>${k.dobavitelj||'—'}</td>
+    <td class="td-mono">${f4(k.cena||0)} €</td>
+    <td>${k.opomba||'—'}</td>
+    <td><button class="btn btn-del" onclick="deleteCenikKapsula('${k.id}')">✕</button></td>
+  </tr>`).join('');
+}
+function showKapsulaForm(){
+  showModal(`
+    <div style="display:flex;justify-content:space-between;margin-bottom:1rem">
+      <div style="font-size:15px;font-weight:500">Nova kapsula</div>
+      <button class="btn btn-sm" onclick="hideModal()">✕</button>
+    </div>
+    <div class="form-grid">
+      <label class="form-label">Velikost</label>
+      <select id="kk-vel"><option>00</option><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option></select>
+      <label class="form-label">Material</label>
+      <select id="kk-mat"><option>HPMC</option><option>Zelatina</option><option>Pullulan</option><option>Drugo</option></select>
+      <label class="form-label">Dobavitelj</label>
+      <input type="text" id="kk-dob">
+      <label class="form-label">Cena (€/1.000 kos)</label>
+      <input type="number" id="kk-cena" value="8.5" step="0.001" style="max-width:130px">
+      <label class="form-label">Opomba</label>
+      <input type="text" id="kk-op">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:1.5rem;justify-content:flex-end">
+      <button class="btn" onclick="hideModal()">Prekliči</button>
+      <button class="btn btn-primary" onclick="saveCenikKapsula()">Shrani</button>
+    </div>`);
+}
+async function saveCenikKapsula(){
+  await sb.from('cenik_kapsul').insert({
+    velikost:document.getElementById('kk-vel').value,
+    material:document.getElementById('kk-mat').value,
+    dobavitelj:document.getElementById('kk-dob').value,
+    cena:+document.getElementById('kk-cena').value,
+    opomba:document.getElementById('kk-op').value,
+  });
+  hideModal();await loadCenikKapsul();await loadCenikKapsulForSelect();notif('✓ Kapsula dodana');
+}
+async function deleteCenikKapsula(id){
+  if(!confirm('Izbrisati?'))return;
+  await sb.from('cenik_kapsul').delete().eq('id',id);
+  await loadCenikKapsul();notif('✓ Izbrisano');
+}
+function syncKapsSelect(){
+  const sel=document.getElementById('i-kaps-select');if(!sel)return;
+  const cur=sel.value;
+  sel.innerHTML='<option value="">— Izberi kapsulo —</option>'+
+    (cenikKapsulData||[]).map(k=>`<option value="${k.id}">${k.velikost} ${k.material} | ${f4(k.cena)} €/1.000</option>`).join('');
+  if(cur)sel.value=cur;
+}
+function onKapsSelect(){
+  const sel=document.getElementById('i-kaps-select');if(!sel||!sel.value)return;
+  const k=cenikKapsulData.find(x=>x.id===sel.value);
+  if(k&&k.cena){const el=document.getElementById('i-cena-kaps');if(el)el.value=k.cena;}
+}
+
+// ── STRANKE ────────────────────────────────────────────────
+async function loadStranke(){
+  const{data}=await sb.from('stranke').select('*').order('podjetje');
+  strankeData=data||[];renderStranke();
+}
+async function loadStrankeForSelect(){
+  const{data}=await sb.from('stranke').select('id,podjetje').order('podjetje');
+  strankeData=data||[];syncStrankaSelect();
+}
+function syncStrankaSelect(){
+  const sel=document.getElementById('i-stranka');if(!sel)return;
+  const cur=sel.value;
+  sel.innerHTML='<option value="">— Brez stranke —</option>'+
+    (strankeData||[]).map(s=>`<option value="${s.id}">${s.podjetje}</option>`).join('');
+  if(cur)sel.value=cur;
+}
+function onStrankaSelect(){}
+function filterStranke(){renderStranke();}
+function renderStranke(){
+  const q=(document.getElementById('stranke-search')?.value||'').toLowerCase();
+  const el=document.getElementById('stranke-lista');if(!el)return;
+  const filtered=(strankeData||[]).filter(s=>!q||s.podjetje.toLowerCase().includes(q));
+  if(!filtered.length){el.innerHTML='<div class="empty">Ni strank.</div>';return;}
+  el.innerHTML=filtered.map(s=>`
+    <div class="card" style="margin-bottom:.75rem">
+      <div style="padding:.875rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="width:38px;height:38px;border-radius:50%;background:var(--accent-light);display:flex;align-items:center;justify-content:center;font-weight:500;font-size:15px;color:var(--accent-text);flex-shrink:0">${s.podjetje.charAt(0).toUpperCase()}</div>
+          <div>
+            <div style="font-weight:500;font-size:13px">${s.podjetje}</div>
+            <div class="text-sm" style="margin-top:2px">${s.davcna?'DIŠ: '+s.davcna+' · ':''} ${s.email||''} ${s.drzava?'· '+s.drzava:''}</div>
+          </div>
+        </div>
+        <div class="flex-gap">
+          <span class="badge badge-gray">Plačilo: ${s.rok_placila||30} dni</span>
+          <button class="btn btn-sm" onclick="editStranka('${s.id}')">✎ Uredi</button>
+          <button class="btn btn-del" onclick="deleteStranka('${s.id}')">✕</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+function showStrankaForm(id){
+  const s=id?(strankeData||[]).find(x=>x.id===id)||{}:{};
+  showModal(`
+    <div style="display:flex;justify-content:space-between;margin-bottom:1rem">
+      <div style="font-size:15px;font-weight:500">${id?'Uredi stranko':'Nova stranka'}</div>
+      <button class="btn btn-sm" onclick="hideModal()">✕</button>
+    </div>
+    <div class="form-grid">
+      <label class="form-label">Ime podjetja</label><input type="text" id="st-pod" value="${s.podjetje||''}">
+      <label class="form-label">Naslov</label><input type="text" id="st-nas" value="${s.naslov||''}">
+      <label class="form-label">Država</label><input type="text" id="st-drz" value="${s.drzava||''}">
+      <label class="form-label">Naslov za pošiljanje</label><input type="text" id="st-npos" value="${s.naslov_posiljanja||''}">
+      <label class="form-label">Email</label><input type="email" id="st-email" value="${s.email||''}">
+      <label class="form-label">Telefon</label><input type="text" id="st-tel" value="${s.telefon||''}">
+      <label class="form-label">Davčna številka</label><input type="text" id="st-davcna" value="${s.davcna||''}">
+      <label class="form-label">Rok plačila (dni)</label>
+      <select id="st-rok" style="max-width:120px">
+        ${[8,15,30,45,60,90].map(d=>`<option value="${d}"${(s.rok_placila||30)===d?' selected':''}>${d} dni</option>`).join('')}
+      </select>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:1.5rem;justify-content:flex-end">
+      <button class="btn" onclick="hideModal()">Prekliči</button>
+      <button class="btn btn-primary" onclick="saveStranka('${id||''}')">Shrani</button>
+    </div>`);
+}
+function editStranka(id){showStrankaForm(id);}
+async function saveStranka(id){
+  const obj={
+    podjetje:document.getElementById('st-pod').value,
+    naslov:document.getElementById('st-nas').value,
+    drzava:document.getElementById('st-drz').value,
+    naslov_posiljanja:document.getElementById('st-npos').value,
+    email:document.getElementById('st-email').value,
+    telefon:document.getElementById('st-tel').value,
+    davcna:document.getElementById('st-davcna').value,
+    rok_placila:+document.getElementById('st-rok').value,
+    updated_at:new Date().toISOString(),
+  };
+  if(id){await sb.from('stranke').update(obj).eq('id',id);}
+  else{await sb.from('stranke').insert({...obj,created_at:new Date().toISOString()});}
+  hideModal();await loadStranke();await loadStrankeForSelect();notif('✓ Stranka shranjena');
+}
+async function deleteStranka(id){
+  if(!confirm('Izbrisati stranko?'))return;
+  await sb.from('stranke').delete().eq('id',id);
+  await loadStranke();notif('✓ Izbrisano');
+}
+
+// ── STROJI ─────────────────────────────────────────────────
+async function loadStrojiForSelect(){
+  const{data}=await sb.from('stroji').select('*').order('ime');
+  strojData=data||[];
+  const sel=document.getElementById('i-stroj');if(!sel)return;
+  sel.innerHTML=(strojData||[]).map((s,i)=>`<option value="${i}">${s.ime} — ${s.tip}</option>`).join('');
+}
+function getStroj(){return strojData[+document.getElementById('i-stroj')?.value]||strojData[0];}
+function getStrojCena(stroj,kol){
+  const tiers=stroj?.tiers||[];
+  for(const t of tiers){if(kol>=t.od&&kol<=t.do)return t.cena;}
+  return tiers[tiers.length-1]?.cena||0;
+}
+
+// ── FORMULA ────────────────────────────────────────────────
+function renderFormula(){
+  const body=document.getElementById('formula-body');if(!body)return;
+  body.innerHTML=formulaData.map((f,i)=>{
+    const c=(cenikSestavineData||[]).find(x=>x.id===f.sestavina_id);
+    const minC=c?Math.min(...Object.values(Object.fromEntries(TIER_COLS.map(k=>[k,c[k]||0]))).filter(x=>x>0)):0;
+    const maxC=c?Math.max(...Object.values(Object.fromEntries(TIER_COLS.map(k=>[k,c[k]||0]))).filter(x=>x>0)):0;
+    return`<tr>
+      <td><select onchange="formulaData[${i}].sestavina_id=this.value" style="min-width:180px">
+        <option value="">— Izberi —</option>
+        ${(cenikSestavineData||[]).map(cs=>`<option value="${cs.id}"${f.sestavina_id===cs.id?' selected':''}>${cs.ime}</option>`).join('')}
+      </select></td>
+      <td><select onchange="formulaData[${i}].del=this.value" style="max-width:65px">
+        <option value=""${!f.del?' selected':''}>—</option>
+        <option value="A"${f.del==='A'?' selected':''}>A</option>
+        <option value="B"${f.del==='B'?' selected':''}>B</option>
+      </select></td>
+      <td><input type="number" value="${f.kol}" class="inp-blue" onchange="formulaData[${i}].kol=+this.value" min="0" step="0.001"></td>
+      <td><select onchange="formulaData[${i}].enota=this.value" style="max-width:65px">
+        <option${f.enota==='mg'?' selected':''}>mg</option>
+        <option${f.enota==='ml'?' selected':''}>ml</option>
+      </select></td>
+      <td><input type="number" value="${f.izguba||0}" onchange="formulaData[${i}].izguba=+this.value" min="0" step="0.1"></td>
+      <td><input type="number" value="${f.min_ob||0}" onchange="formulaData[${i}].min_ob=+this.value" min="0" step="0.1" placeholder="0"></td>
+      <td>${c?`<span class="badge badge-blue" style="font-size:10px">${c.dobavitelj||'—'}</span>`:'—'}</td>
+      <td>${c&&maxC>0?`<span class="badge badge-gray" style="font-size:10px">${f2(maxC)}→${f2(minC)} €/${c.enota||'kg'}</span>`:'—'}</td>
+      <td><button class="btn btn-del" onclick="formulaData.splice(${i},1);renderFormula()">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+function addFormulaRow(){
+  formulaData.push({sestavina_id:'',del:'',kol:100,enota:'mg',izguba:0,min_ob:0});
+  renderFormula();
+}
+async function shraniFormulo(){
+  const naziv=document.getElementById('i-naziv')?.value||'Formula '+(new Date().toLocaleDateString('sl-SI'));
+  await sb.from('formule').insert({naziv,sestavine:formulaData,tip_kapsulacije:document.getElementById('i-tip')?.value||'LIQUID'});
+  notif('✓ Formula shranjena');
+}
+
+// ── IZRAČUN ─────────────────────────────────────────────────
+function getCenikCena(c,kg){
+  if(!c)return 0;
+  let idx=0;
+  for(let i=0;i<TIER_KG.length;i++){if(kg>=TIER_KG[i])idx=i;}
+  return c[TIER_COLS[idx]]||0;
+}
+function izracunaj(){
+  const stroj=getStroj();
+  const naziv=document.getElementById('i-naziv')?.value||'—';
+  const tip=document.getElementById('i-tip')?.value||'LIQUID';
+  const odpad=+(document.getElementById('i-odpad')?.value||3)/100;
+  const kaps_c1000=+(document.getElementById('i-cena-kaps')?.value||0);
+  const pakiranje=document.getElementById('i-pakiranje')?.value||'bulk';
+  const marza_pct=+(document.getElementById('i-marza')?.value||20)/100;
+  const strankaId=document.getElementById('i-stranka')?.value||null;
+  const stranka=strankaId?(strankeData||[]).find(s=>s.id===strankaId):null;
+  const kapsId=document.getElementById('i-kaps-select')?.value||null;
+  const kapsObj=kapsId?(cenikKapsulData||[]).find(k=>k.id===kapsId):null;
+  const tip_kaps=kapsObj?`${kapsObj.velikost} ${kapsObj.material}`:'—';
+
+  const rezultati=kolicine.map(kol=>{
+    const kol_ob=Math.ceil(kol*(1+odpad));
+    const kaps_strosek=(kaps_c1000/1000)*kol_ob;
+    const kaps_cena_kos=getStrojCena(stroj,kol);
+    const kaps_strosek_stroj=kaps_cena_kos*kol_ob;
+
+    let sest_skupaj=0;
+    const sest_d=formulaData.map(f=>{
+      const c=(cenikSestavineData||[]).find(x=>x.id===f.sestavina_id);
+      const kol_mg=f.kol*(1+(f.izguba||0)/100);
+      const kg=(kol_mg/1e6)*kol_ob;
+      const kg_ob=f.min_ob>0?Math.max(kg,f.min_ob):kg;
+      const cena_kg=getCenikCena(c,kg_ob);
+      const strosek=kg_ob*cena_kg;
+      sest_skupaj+=strosek;
+      let akt_ti=0;
+      for(let ti=0;ti<TIER_KG.length;ti++){if(kg_ob>=TIER_KG[ti])akt_ti=ti;}
+      return{ime:c?c.ime:'?',dobavitelj:c?c.dobavitelj:'',kg,kg_ob,cena_kg,akt_ti,strosek,min_ob:f.min_ob||0};
+    });
+
+    const skupaj=sest_skupaj+kaps_strosek+kaps_strosek_stroj;
+    const marza_val=marza_pct>0?skupaj*(marza_pct/(1-marza_pct)):0;
+    const predlagana=skupaj+marza_val;
+    return{kol,kol_ob,kaps_c1000,kaps_strosek,kaps_cena_kos,kaps_strosek_stroj,sest_skupaj,sest_d,skupaj,marza_val,predlagana};
+  });
+
+  window._zadnji={naziv,tip,tip_kaps,pakiranje,stroj,rezultati,marza_pct,stranka,odpad_val:+(document.getElementById('i-odpad')?.value||3)};
+
+  // Shrani kalkulacijo v Supabase
+  sb.from('kalkulacije').insert({
+    naziv,tip_kapsulacije:tip,tip_kapsule:tip_kaps,pakiranje,
+    stranka_id:strankaId||null,
+    kolicine,rezultati,marza_pct:marza_pct*100,odpad_pct:+(document.getElementById('i-odpad')?.value||3),
+    created_by:currentUser?.id,
+  });
+
+  renderRezultat(window._zadnji);
+  notif('✓ Izračunano');
+}
+
+function renderRezultat({naziv,tip,tip_kaps,stroj,rezultati,marza_pct,stranka,odpad_val}){
+  let html=`<div class="flex-between" style="margin-bottom:1rem">
+    <div>
+      <div class="page-title">${naziv}</div>
+      ${stranka?`<div style="font-size:12px;color:var(--text2);margin-top:2px">${stranka.podjetje}</div>`:''}
+      <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+        <span class="badge badge-gray">${tip}</span>
+        ${stroj?`<span class="badge badge-blue">${stroj.ime}</span>`:''}
+        <span class="badge badge-gray">${tip_kaps}</span>
+        ${marza_pct>0?`<span class="badge badge-green">Marža ${(marza_pct*100).toFixed(0)}%</span>`:''}
+      </div>
+    </div>
+  </div>`;
+
+  if(rezultati.length>1){
+    html+=`<div class="card" style="margin-bottom:1rem">
+      <div class="card-header"><span class="card-title">Primerjava količin</span></div>
+      <div class="card-body" style="padding:.75rem"><div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Količina</th><th class="td-right">Str./kos</th><th class="td-right">Str./1.000</th><th class="td-right">Skupaj strošek</th><th class="td-right">Predl. cena</th><th class="td-right">Marža</th></tr></thead>
+        <tbody>${rezultati.map(r=>`<tr>
+          <td style="font-weight:500;font-family:var(--mono)">${fN(r.kol)}</td>
+          <td class="td-mono">${f4(r.skupaj/r.kol)} €</td>
+          <td class="td-mono">${f2(r.skupaj/r.kol*1000)} €</td>
+          <td class="td-mono">${f2(r.skupaj)} €</td>
+          <td class="td-mono" style="color:var(--accent-text);font-weight:500">${f2(r.predlagana)} €</td>
+          <td class="td-mono" style="color:var(--accent-text)">${f2(r.marza_val)} €</td>
+        </tr>`).join('')}</tbody>
+      </table></div></div></div>`;
+  }
+
+  rezultati.forEach(r=>{
+    html+=`<div class="card" style="margin-bottom:1rem">
+      <div class="card-header"><span class="card-title">${fN(r.kol)} kapsul</span><span class="badge badge-warn">${f4(r.kaps_cena_kos)} €/kos kapsulacija</span></div>
+      <div class="card-body">
+        <div class="metrics" style="margin-bottom:1.25rem">
+          <div class="metric"><div class="metric-label">Strošek / kos</div><div class="metric-val">${f4(r.skupaj/r.kol)} €</div></div>
+          <div class="metric"><div class="metric-label">Strošek / 1.000</div><div class="metric-val">${f2(r.skupaj/r.kol*1000)} €</div></div>
+          <div class="metric"><div class="metric-label">Skupaj strošek</div><div class="metric-val">${f2(r.skupaj)} €</div></div>
+          <div class="metric"><div class="metric-label">Predlagana cena</div><div class="metric-val green">${f2(r.predlagana)} €</div></div>
+        </div>
+        <div style="font-size:13px">
+          ${r.sest_d.filter(s=>s.strosek>0).map(s=>`
+          <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px">
+            <span style="color:var(--text2)">${s.ime} — ${f4(s.kg_ob)} kg × ${f2(s.cena_kg)} €/kg</span>
+            <span class="text-mono">${f2(s.strosek)} €</span>
+          </div>`).join('')}
+          <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px">
+            <span style="color:var(--text2)">Prazne kapsule (${f2(r.kaps_c1000)} €/1.000)</span>
+            <span class="text-mono">${f2(r.kaps_strosek)} €</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px">
+            <span style="color:var(--text2)">Kapsulacija ${stroj?'— '+stroj.ime:''}</span>
+            <span class="text-mono">${f2(r.kaps_strosek_stroj)} €</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:14px;font-weight:500;border-top:2px solid var(--border);margin-top:4px">
+            <span>Skupaj strošek</span><span class="text-mono">${f2(r.skupaj)} €</span>
+          </div>
+          ${r.marza_val>0?`<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;color:var(--accent-text)">
+            <span>Marža</span><span class="text-mono">${f2(r.marza_val)} €</span>
+          </div>`:''}
+          <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:15px;font-weight:500;color:var(--accent-text);border-top:1px solid var(--border)">
+            <span>Predlagana cena</span><span class="text-mono">${f2(r.predlagana)} €</span>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  });
+  document.getElementById('rezultat-wrap').innerHTML=html;
+}
+
+// ── KOLIČINE ───────────────────────────────────────────────
+function renderKolRows(){
+  const d=document.getElementById('kol-rows');if(!d)return;
+  d.innerHTML=kolicine.map((k,i)=>`
+    <div class="kol-row">
+      <input type="number" value="${k}" min="1000" step="1000" class="inp-blue text-mono"
+        onchange="kolicine[${i}]=+this.value" style="max-width:160px">
+      <span class="text-sm">kapsul</span>
+      ${kolicine.length>1?`<button class="btn btn-del btn-sm" onclick="kolicine.splice(${i},1);renderKolRows()">✕</button>`:''}
+    </div>`).join('');
+}
+function addKol(){kolicine.push(500000);renderKolRows();}
+
+// ── DELOVNI NALOGI ─────────────────────────────────────────
+async function loadNalogi(){
+  const{data}=await sb.from('delovni_nalogi').select('*,stranke(podjetje)').order('created_at',{ascending:false}).limit(50);
+  const body=document.getElementById('nalogi-body');if(!body)return;
+  body.innerHTML=(data||[]).map(n=>`<tr>
+    <td class="text-mono" style="color:var(--info)">${n.stevilka}</td>
+    <td style="font-weight:500">${n.naziv}</td>
+    <td>${n.stranke?.podjetje||'—'}</td>
+    <td>${n.datum_sprejem||'—'}</td>
+    <td>${n.datum_rok||'—'}</td>
+    <td class="td-mono">${fN(n.kolicina||0)}</td>
+    <td><span class="badge ${statusBadgeClass(n.status)}">${n.status}</span></td>
+    <td><button class="btn btn-sm" onclick="openNalog('${n.id}')">Odpri</button></td>
+  </tr>`).join('');
+}
+
+async function novNalog(){
+  const tip=document.getElementById('i-tip')?.value||'LIQUID';
+  const prefix=tip==='LIQUID'?'L':tip==='DUAL'?'DC':'P';
+  const leto=new Date().getFullYear();
+  const{count}=await sb.from('delovni_nalogi').select('*',{count:'exact',head:true}).like('stevilka',`${prefix}-%`).like('stevilka',`%-${leto}`);
+  const stevilka=`${prefix}-${String((count||0)+1).padStart(2,'0')}-${leto}`;
+  const{data,error}=await sb.from('delovni_nalogi').insert({
+    stevilka,
+    naziv:document.getElementById('i-naziv')?.value||'Nov nalog',
+    stranka_id:document.getElementById('i-stranka')?.value||null,
+    tip_kapsulacije:tip,
+    kolicina:kolicine[0]||0,
+    pakiranje:document.getElementById('i-pakiranje')?.value||'bulk',
+    datum_sprejem:new Date().toISOString().slice(0,10),
+    status:'caka',
+    sestavine_coa:formulaData.map(f=>({...f,lot:'',expiry:'',alergeni:[],coa_done:false})),
+    created_by:currentUser?.id,
+  }).select().single();
+  if(error){notif('Napaka: '+error.message,3500);return;}
+  notif(`✓ Nalog ${stevilka} ustvarjen`);
+  await loadNalogi();showPanel('nalogi');
+}
+
+function openNalog(id){
+  notif('Nalog odprt (v razvoju)');
+}
+
+// ── ZALOGA ─────────────────────────────────────────────────
+async function loadZaloga(){
+  const{data}=await sb.from('zaloga').select('*').order('sestavina_ime').order('expiry_date');
+  zalogaData=data||[];
+  renderZaloga();
+  // Metrics
+  const aktivne=zalogaData.filter(z=>z.status==='aktivna');
+  const vrednost=aktivne.reduce((s,z)=>s+(z.kolicina*(z.cena_enoto||0)),0);
+  const cez60=new Date(Date.now()+60*24*3600*1000).toISOString().slice(0,10);
+  const expBlizu=aktivne.filter(z=>z.expiry_date&&z.expiry_date<=cez60).length;
+  const brezCOA=aktivne.filter(z=>!z.coa_done).length;
+  const el=document.getElementById('zaloga-metrics');
+  if(el)el.innerHTML=`
+    <div class="metric"><div class="metric-label">LOT-ov aktivnih</div><div class="metric-val">${aktivne.length}</div></div>
+    <div class="metric"><div class="metric-label">Vrednost zaloge</div><div class="metric-val">${f2(vrednost)} €</div></div>
+    <div class="metric"><div class="metric-label">Expiry v 60 dneh</div><div class="metric-val ${expBlizu>0?'warn':''}">${expBlizu}</div></div>
+    <div class="metric"><div class="metric-label">Brez COA</div><div class="metric-val ${brezCOA>0?'red':''}">${brezCOA}</div></div>`;
+}
+function filterZaloga(){renderZaloga();}
+function renderZaloga(){
+  const q=(document.getElementById('zaloga-search')?.value||'').toLowerCase();
+  const body=document.getElementById('zaloga-body');if(!body)return;
+  const filtered=(zalogaData||[]).filter(z=>!q||z.sestavina_ime.toLowerCase().includes(q)||(z.lot||'').toLowerCase().includes(q));
+  const cez60=new Date(Date.now()+60*24*3600*1000).toISOString().slice(0,10);
+  body.innerHTML=filtered.map(z=>`<tr>
+    <td style="font-weight:500">${z.sestavina_ime}</td>
+    <td class="text-mono" style="font-size:12px">${z.lot||'—'}</td>
+    <td>${z.enota||'kg'}</td>
+    <td class="td-mono">${f4(z.kolicina)}</td>
+    <td class="td-mono">${z.cena_enoto>0?f2(z.cena_enoto)+' €':'—'}</td>
+    <td class="td-mono">${z.cena_enoto>0?f2(z.kolicina*z.cena_enoto)+' €':'—'}</td>
+    <td style="font-size:12px;${z.expiry_date&&z.expiry_date<=cez60?'color:var(--warn);font-weight:500':''}">${z.expiry_date||'—'}</td>
+    <td>${z.coa_done?'<span class="badge badge-green" style="font-size:10px">✓</span>':'<span class="badge badge-gray" style="font-size:10px">—</span>'}</td>
+    <td><span class="badge ${z.status==='aktivna'?'badge-green':'badge-gray'}">${z.status}</span></td>
+    <td><button class="btn btn-del" onclick="deleteZaloga('${z.id}')">✕</button></td>
+  </tr>`).join('');
+}
+async function deleteZaloga(id){
+  if(!confirm('Odstraniti LOT iz zaloge?'))return;
+  await sb.from('zaloga').update({status:'odpisana'}).eq('id',id);
+  await loadZaloga();notif('✓ LOT odpisан');
+}
+
+// ── PREVZEMNICE ────────────────────────────────────────────
+async function loadPrevzemnice(){
+  const{data}=await sb.from('prevzemnice').select('*').order('created_at',{ascending:false});
+  const el=document.getElementById('prevzemnice-lista');if(!el)return;
+  if(!data?.length){el.innerHTML='<div class="empty">Ni prevzemnic.</div>';return;}
+  el.innerHTML=data.map(p=>`
+    <div class="card" style="margin-bottom:.75rem">
+      <div style="padding:.875rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-weight:500;font-size:13px">${p.stevilka} <span class="text-sm">— ${p.dobavitelj||'—'}</span></div>
+          <div class="text-sm">${p.datum||'—'} · Račun: ${p.racun_stevilka||'—'}</div>
+        </div>
+        <span class="badge ${p.status==='potrjena'?'badge-green':'badge-warn'}">${p.status==='potrjena'?'✓ Potrjena':'Osnutek'}</span>
+      </div>
+    </div>`).join('');
+}
+
+// Init prevzemnica
+function initNovaPrevzemnica(){
+  const g=id=>document.getElementById(id);
+  const stevilka='PRV-'+new Date().getFullYear()+'-001';
+  if(g('prv-stevilka')&&!g('prv-stevilka').value)g('prv-stevilka').value=stevilka;
+  if(g('prv-datum')&&!g('prv-datum').value)g('prv-datum').value=new Date().toISOString().slice(0,10);
+  novaPrv={stevilka,datum:new Date().toISOString().slice(0,10),dobavitelj:'',racun_st:'',artikli:[]};
+  const card=document.getElementById('prv-artikli-card');
+  if(card)card.style.display='none';
+}
+
+async function beriRacun(input){
+  const file=input.files[0];if(!file)return;
+  const statusEl=document.getElementById('racun-status');
+  if(statusEl)statusEl.innerHTML='<span class="badge badge-warn">⟳ Berem račun…</span>';
+  try{
+    const base64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file);});
+    const prompt=`Iz tega PDF računa izlušči vse artikle in vrni SAMO JSON:
+{"dobavitelj":"","datum_racuna":"YYYY-MM-DD","stevilka_racuna":"","artikli":[{"naziv_na_racunu":"","kolicina":0,"enota":"kg","cena_na_enoto":0,"skupaj":0}]}
+Vrni SAMO JSON, brez razlage.`;
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1500,messages:[{role:'user',content:[{type:'document',source:{type:'base64',media_type:'application/pdf',data:base64}},{type:'text',text:prompt}]}]})});
+    const data=await resp.json();
+    const parsed=JSON.parse((data.content?.map(c=>c.text||'').join('')||'').replace(/```json|```/g,'').trim());
+    const g=id=>document.getElementById(id);
+    if(parsed.dobavitelj&&g('prv-dobavitelj')&&!g('prv-dobavitelj').value)g('prv-dobavitelj').value=parsed.dobavitelj;
+    if(parsed.stevilka_racuna&&g('prv-racun-st')&&!g('prv-racun-st').value)g('prv-racun-st').value=parsed.stevilka_racuna;
+    novaPrv.artikli=parsed.artikli.map(a=>{
+      let best=null,score=0;
+      (cenikSestavineData||[]).forEach((c,ci)=>{const s=matchScore(a.naziv_na_racunu,c.ime);if(s>score){score=s;best={idx:ci,id:c.id,ime:c.ime};}});
+      return{...a,sestavina_id:score>0.3?best?.id:null,predlagano:score>0.3?best?.ime:null,score,potrjeno:score>0.7,lot:'',expiry:'',alergeni:[],coa_done:false,coa_filename:''};
+    });
+    renderPrvArtikli();
+    const card=document.getElementById('prv-artikli-card');if(card)card.style.display='block';
+    if(statusEl)statusEl.innerHTML=`<span class="badge badge-green">✓ ${novaPrv.artikli.length} artiklov</span>`;
+  }catch(err){if(statusEl)statusEl.innerHTML=`<span class="badge badge-red">⚠ ${err.message}</span>`;}
+  input.value='';
+}
+
+function matchScore(a,b){
+  const al=a.toLowerCase(),bl=b.toLowerCase();
+  if(al===bl)return 1;if(al.includes(bl)||bl.includes(al))return 0.8;
+  const aw=al.split(/\s+/),bw=bl.split(/\s+/);
+  const sk=aw.filter(w=>w.length>3&&bw.some(bww=>bww.includes(w)||w.includes(bww)));
+  return sk.length/Math.max(aw.length,bw.length);
+}
+
+function renderPrvArtikli(){
+  const el=document.getElementById('prv-artikli-list');if(!el)return;
+  el.innerHTML=novaPrv.artikli.map((a,i)=>`
+    <div style="border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:.75rem;overflow:hidden">
+      <div style="background:var(--surface2);padding:.6rem 1rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <div style="font-weight:500">${a.naziv_na_racunu}</div>
+        <div class="flex-gap">
+          <span class="badge badge-gray">${f4(a.kolicina)} ${a.enota}</span>
+          <span class="badge badge-blue">${a.cena_na_enoto>0?f2(a.cena_na_enoto)+' €/'+a.enota:'—'}</span>
+          ${a.coa_done?'<span class="badge badge-green">✓ COA</span>':'<span class="badge badge-gray">COA manjka</span>'}
+        </div>
+      </div>
+      <div style="padding:.75rem 1rem;display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem">
+        <div>
+          <div class="text-sm" style="margin-bottom:4px">Ujemanje v ceniku</div>
+          <select onchange="novaPrv.artikli[${i}].sestavina_id=this.value||null" style="font-size:12px;width:100%">
+            <option value="">— Ročno —</option>
+            ${(cenikSestavineData||[]).map(c=>`<option value="${c.id}"${a.sestavina_id===c.id?' selected':''}>${c.ime}</option>`).join('')}
+          </select>
+          ${a.predlagano&&!a.potrjeno?`<div class="text-sm" style="color:var(--info);margin-top:3px">Predlog: ${a.predlagano} (${Math.round(a.score*100)}%)</div>`:''}
+        </div>
+        <div>
+          <div class="text-sm" style="margin-bottom:4px">LOT / Batch</div>
+          <input type="text" value="${a.lot}" placeholder="Iz COA ali ročno" onchange="novaPrv.artikli[${i}].lot=this.value" style="font-size:12px">
+        </div>
+        <div>
+          <div class="text-sm" style="margin-bottom:4px">Expiry date</div>
+          <input type="date" value="${a.expiry}" onchange="novaPrv.artikli[${i}].expiry=this.value" style="font-size:12px">
+        </div>
+      </div>
+      <div style="padding:0 1rem .75rem">
+        <div class="text-sm" style="margin-bottom:4px">COA dokument</div>
+        <label class="btn btn-sm" style="cursor:pointer">
+          ${a.coa_filename?'↺ Zamenjaj COA':'↑ Naloži COA'}
+          <input type="file" accept=".pdf" style="display:none" onchange="beriCOAPrv(this,${i})">
+        </label>
+        ${a.coa_filename?`<span class="text-sm" style="margin-left:8px">${a.coa_filename}</span>`:''}
+      </div>
+    </div>`).join('');
+}
+
+async function beriCOAPrv(input,idx){
+  const file=input.files[0];if(!file)return;
+  novaPrv.artikli[idx].coa_filename=file.name;renderPrvArtikli();
+  try{
+    const base64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file);});
+    const prompt=`Iz COA dokumenta izlušči in vrni SAMO JSON:
+{"lot":"","expiry":"YYYY-MM-DD","alergeni":[]}
+Alergeni iz 14 EU alergenov: Gluten,Raki,Jajca,Ribe,Arašidi,Soja,Mleko,Oreščki,Zelena,Gorčica,Sezam,Žveplov dioksid,Lupina,Blitva.
+Vrni SAMO JSON.`;
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:400,messages:[{role:'user',content:[{type:'document',source:{type:'base64',media_type:'application/pdf',data:base64}},{type:'text',text:prompt}]}]})});
+    const data=await resp.json();
+    const parsed=JSON.parse((data.content?.map(c=>c.text||'').join('')||'').replace(/```json|```/g,'').trim());
+    if(parsed.lot)novaPrv.artikli[idx].lot=parsed.lot;
+    if(parsed.expiry)novaPrv.artikli[idx].expiry=parsed.expiry;
+    if(parsed.alergeni)novaPrv.artikli[idx].alergeni=parsed.alergeni;
+    novaPrv.artikli[idx].coa_done=true;
+    renderPrvArtikli();notif('✓ COA prebran');
+  }catch(err){notif('⚠ COA napaka: '+err.message,3500);}
+  input.value='';
+}
+
+async function potrdiPrevzemnico(){
+  const g=id=>document.getElementById(id);
+  const stevilka=g('prv-stevilka')?.value||'PRV-xxx';
+  const datum=g('prv-datum')?.value||new Date().toISOString().slice(0,10);
+  const dobavitelj=g('prv-dobavitelj')?.value||'';
+  const racun_st=g('prv-racun-st')?.value||'';
+  if(!novaPrv.artikli.length){notif('Ni artiklov');return;}
+  // Dodaj v zalogo
+  const zalogaVnosi=novaPrv.artikli.map(a=>({
+    sestavina_id:a.sestavina_id||null,
+    sestavina_ime:a.sestavina_id?(cenikSestavineData.find(c=>c.id===a.sestavina_id)?.ime||a.naziv_na_racunu):a.naziv_na_racunu,
+    lot:a.lot||'',enota:a.enota||'kg',kolicina:+a.kolicina||0,
+    cena_enoto:+a.cena_na_enoto||0,expiry_date:a.expiry||null,
+    alergeni:a.alergeni||[],coa_done:a.coa_done||false,coa_filename:a.coa_filename||'',
+    racun_done:true,dobavitelj,datum_prevzema:datum,
+    racun_stevilka:racun_st,status:'aktivna',
+  }));
+  await sb.from('zaloga').insert(zalogaVnosi);
+  await sb.from('prevzemnice').insert({stevilka,datum,dobavitelj,racun_stevilka:racun_st,artikli:novaPrv.artikli,status:'potrjena',skupaj_vrednost:novaPrv.artikli.reduce((s,a)=>s+(a.skupaj||0),0),created_by:currentUser?.id});
+  notif(`✓ Prevzemnica potrjena — ${novaPrv.artikli.length} LOT-ov v zalogi`);
+  novaPrv={stevilka:'',datum:'',dobavitelj:'',racun_st:'',artikli:[]};
+  showPanel('zaloga');loadZaloga();
+}
+
+// ── UPORABNIKI (Admin) ─────────────────────────────────────
+async function loadUporabniki(){
+  const{data}=await sb.from('profiles').select('*').order('created_at');
+  const body=document.getElementById('uporabniki-body');if(!body)return;
+  body.innerHTML=(data||[]).map(u=>`<tr>
+    <td style="font-weight:500">${u.ime&&u.priimek?u.ime+' '+u.priimek:'—'}</td>
+    <td>${u.email||'—'}</td>
+    <td><span class="badge ${getRoleClass(u.vloga)}">${getRoleLabel(u.vloga)}</span></td>
+    <td><span class="badge ${u.aktiven?'badge-green':'badge-gray'}">${u.aktiven?'Aktiven':'Neaktiven'}</span></td>
+    <td><button class="btn btn-sm" onclick="changeRole('${u.id}','${u.vloga}')">Vloga</button></td>
+  </tr>`).join('');
+}
+
+function changeRole(id,trenutna){
+  showModal(`
+    <div style="margin-bottom:1rem;font-size:15px;font-weight:500">Sprememba vloge</div>
+    <div class="form-grid">
+      <label class="form-label">Nova vloga</label>
+      <select id="nova-vloga">
+        ${['admin','vodja','operater','racunovodstvo'].map(r=>`<option value="${r}"${r===trenutna?' selected':''}>${getRoleLabel(r)}</option>`).join('')}
+      </select>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:1.5rem;justify-content:flex-end">
+      <button class="btn" onclick="hideModal()">Prekliči</button>
+      <button class="btn btn-primary" onclick="saveRole('${id}')">Shrani</button>
+    </div>`);
+}
+async function saveRole(id){
+  const vloga=document.getElementById('nova-vloga').value;
+  await sb.from('profiles').update({vloga}).eq('id',id);
+  hideModal();await loadUporabniki();notif('✓ Vloga posodobljena');
+}
+
+function showPovabiloForm(){
+  showModal(`
+    <div style="margin-bottom:1rem;font-size:15px;font-weight:500">Povabi novega uporabnika</div>
+    <div class="form-grid">
+      <label class="form-label">Email</label>
+      <input type="email" id="inv-email" placeholder="ime@podjetje.com">
+      <label class="form-label">Ime</label>
+      <input type="text" id="inv-ime">
+      <label class="form-label">Priimek</label>
+      <input type="text" id="inv-priimek">
+      <label class="form-label">Vloga</label>
+      <select id="inv-vloga">
+        <option value="operater">Operater</option>
+        <option value="vodja">Vodja</option>
+        <option value="racunovodstvo">Računovodstvo</option>
+        <option value="admin">Admin</option>
+      </select>
+    </div>
+    <div style="font-size:12px;color:var(--text3);margin-top:.75rem">Uporabnik bo prejel email s povezavo za nastavitev gesla.</div>
+    <div style="display:flex;gap:8px;margin-top:1.5rem;justify-content:flex-end">
+      <button class="btn" onclick="hideModal()">Prekliči</button>
+      <button class="btn btn-primary" onclick="povabi()">Pošlji povabilo</button>
+    </div>`);
+}
+async function povabi(){
+  const email=document.getElementById('inv-email').value;
+  const ime=document.getElementById('inv-ime').value;
+  const priimek=document.getElementById('inv-priimek').value;
+  const vloga=document.getElementById('inv-vloga').value;
+  // Invite user via Supabase Admin (potrebuje service role key na backendu)
+  // Za zdaj informativno
+  notif(`Povabilo za ${email} — nastavite v Supabase Dashboard > Authentication > Users`);
+  hideModal();
+}
+
+// ── INIT ──────────────────────────────────────────
+renderKolRows();
+initAuth();
+</script>
+</body>
+</html>
