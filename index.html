@@ -210,6 +210,10 @@ tr:hover td{background:var(--surface2)}
         <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a2 2 0 0 1 2 2v.5h1.5A1.5 1.5 0 0 1 13 5v8.5a1.5 1.5 0 0 1-1.5 1.5h-7A1.5 1.5 0 0 1 3 13.5V5a1.5 1.5 0 0 1 1.5-1.5H6V3a2 2 0 0 1 2-2zm0 1a1 1 0 0 0-1 1v.5h2V3a1 1 0 0 0-1-1z"/></svg>
         Cenik kapsul
       </div>
+      <div class="nav-item" onclick="showPanel('stroji');loadStroji()">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8.932.727c-.243-.97-1.62-.97-1.864 0l-.071.286a.96.96 0 0 1-1.622.434l-.205-.211c-.695-.719-1.888-.03-1.613.931l.08.284a.96.96 0 0 1-1.186 1.187l-.284-.081c-.96-.275-1.65.918-.931 1.613l.211.205a.96.96 0 0 1-.434 1.622l-.286.071c-.97.243-.97 1.62 0 1.864l.286.071a.96.96 0 0 1 .434 1.622l-.211.205c-.719.695-.03 1.888.931 1.613l.284-.08a.96.96 0 0 1 1.187 1.186l-.081.284c-.275.96.918 1.65 1.613.931l.205-.211a.96.96 0 0 1 1.622.434l.071.286c.243.97 1.62.97 1.864 0l.071-.286a.96.96 0 0 1 1.622-.434l.205.211c.695.719 1.888.03 1.613-.931l-.08-.284a.96.96 0 0 1 1.186-1.187l.284.081c.96.275 1.65-.918.931-1.613l-.211-.205a.96.96 0 0 1 .434-1.622l.286-.071c.97-.243.97-1.62 0-1.864l-.286-.071a.96.96 0 0 1-.434-1.622l.211-.205c.719-.695.03-1.888-.931-1.613l-.284.08a.96.96 0 0 1-1.187-1.186L8.932.727zM8 5.196a2.803 2.803 0 1 1 0 5.607 2.803 2.803 0 0 1 0-5.607z"/></svg>
+        Stroji
+      </div>
       <div class="nav-section" style="margin-top:8px">Serija</div>
       <div class="nav-item active" onclick="showPanel('inputi')">
         <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M14.5 3a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5h-13a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h13z"/></svg>
@@ -324,6 +328,15 @@ tr:hover td{background:var(--surface2)}
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- STROJI -->
+      <div id="panel-stroji" class="panel">
+        <div class="flex-between">
+          <div><div class="page-title">Stroji</div><div class="page-sub">Kapsulirni stroji s cenovnimi razredi po količini</div></div>
+          <button class="btn btn-sm btn-primary" onclick="showStrojForm()">+ Dodaj stroj</button>
+        </div>
+        <div id="stroji-lista"></div>
       </div>
 
       <!-- INPUTI -->
@@ -545,8 +558,8 @@ tr:hover td{background:var(--surface2)}
 
 <script>
 // ── CONFIG — zamenjajte z vašimi Supabase kredenciali ──────
-const SUPABASE_URL = 'https://unsolrdpbcvpcjtmoswp.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVuc29scmRwYmN2cGNqdG1vc3dwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYzNjcyNzUsImV4cCI6MjA5MTk0MzI3NX0.WsTn981EfcQCeeapUp7kCp6IMm4J2c7xGmjAnC9wOjI';
+const SUPABASE_URL = 'https://YOUR_PROJECT.supabase.co';
+const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
 // ────────────────────────────────────────────────────────────
 
 const { createClient } = supabase;
@@ -1468,6 +1481,141 @@ async function povabi(){
   // Za zdaj informativno
   notif(`Povabilo za ${email} — nastavite v Supabase Dashboard > Authentication > Users`);
   hideModal();
+}
+
+// ── STROJI ────────────────────────────────────────
+
+async function loadStroji(){
+  const{data}=await sb.from('stroji').select('*').order('ime');
+  strojData=data||[];
+  renderStroji();
+}
+
+function renderStroji(){
+  const el=document.getElementById('stroji-lista');if(!el)return;
+  if(!strojData.length){el.innerHTML='<div class="empty">Ni strojev. Dodajte prvi stroj.</div>';return;}
+  el.innerHTML=strojData.map(s=>`
+    <div class="card" style="margin-bottom:.875rem">
+      <div class="card-header">
+        <div>
+          <span class="card-title">${s.ime}</span>
+          <span class="badge badge-blue" style="margin-left:8px">${s.tip}</span>
+        </div>
+        <div class="flex-gap">
+          <button class="btn btn-sm" onclick="showStrojForm('${s.id}')">✎ Uredi</button>
+          <button class="btn btn-del" onclick="deleteStroj('${s.id}')">✕</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1rem">
+          <div class="metric"><div class="metric-label">Hitrost (kos/h)</div><div class="metric-val">${s.hitrost?s.hitrost.toLocaleString('sl-SI'):'—'}</div></div>
+          <div class="metric"><div class="metric-label">Setup (h)</div><div class="metric-val">${s.setup_h||'—'}</div></div>
+          <div class="metric"><div class="metric-label">Čiščenje (h)</div><div class="metric-val">${s.ciscenje_h||'—'}</div></div>
+          <div class="metric"><div class="metric-label">Operaterji</div><div class="metric-val">${s.operaterji||1}</div></div>
+        </div>
+        <div style="font-size:11px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.5rem">Cenovni razredi (€/kos)</div>
+        <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Od (kos)</th><th>Do (kos)</th><th class="td-right">Cena/kos (€)</th></tr></thead>
+          <tbody>${(s.tiers||[]).map(t=>`<tr>
+            <td class="text-mono">${t.od.toLocaleString('sl-SI')}</td>
+            <td class="text-mono">${t.do>1e13?'∞':t.do.toLocaleString('sl-SI')}</td>
+            <td class="td-mono">${(+t.cena).toFixed(5)} €</td>
+          </tr>`).join('')}</tbody>
+        </table>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function showStrojForm(id){
+  const s=id?(strojData||[]).find(x=>x.id===id)||{}:{};
+  const tiers=s.tiers||[{od:0,do:null,cena:0.02}];
+  showModal(`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+      <div style="font-size:15px;font-weight:500">${id?'Uredi stroj':'Nov stroj'}</div>
+      <button class="btn btn-sm" onclick="hideModal()">✕</button>
+    </div>
+    <div class="form-grid" style="margin-bottom:1rem">
+      <label class="form-label">Ime stroja</label>
+      <input type="text" id="sj-ime" value="${s.ime||''}" placeholder="npr. Liquid Caps Stroj 1">
+      <label class="form-label">Tip kapsulacije</label>
+      <select id="sj-tip">
+        <option${(s.tip||'LIQUID')==='LIQUID'?' selected':''}>LIQUID</option>
+        <option${s.tip==='PRAH'?' selected':''}>PRAH</option>
+        <option${s.tip==='DUAL'?' selected':''}>DUAL</option>
+      </select>
+      <label class="form-label">Hitrost (kos/h)</label>
+      <input type="number" id="sj-hitrost" value="${s.hitrost||''}" min="0" style="max-width:130px">
+      <label class="form-label">Setup (h)</label>
+      <input type="number" id="sj-setup" value="${s.setup_h||''}" step="0.5" min="0" style="max-width:100px">
+      <label class="form-label">Čiščenje (h)</label>
+      <input type="number" id="sj-ciscenje" value="${s.ciscenje_h||''}" step="0.5" min="0" style="max-width:100px">
+      <label class="form-label">Operaterji</label>
+      <input type="number" id="sj-op" value="${s.operaterji||1}" min="1" style="max-width:80px">
+    </div>
+    <div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:.5rem">Cenovni razredi (€/kos)</div>
+    <div id="sj-tiers-wrap"></div>
+    <button class="btn btn-sm" onclick="addStrojTier()" style="margin-top:.5rem">+ Dodaj razred</button>
+    <div style="display:flex;gap:8px;margin-top:1.5rem;justify-content:flex-end">
+      <button class="btn" onclick="hideModal()">Prekliči</button>
+      <button class="btn btn-primary" onclick="saveStroj('${id||''}')">Shrani</button>
+    </div>`);
+
+  // Shrani tiers v window za urejanje
+  window._strojTiers = tiers.map(t=>({...t, do:t.do===null||t.do>1e13?null:t.do}));
+  renderStrojTiers();
+}
+
+function renderStrojTiers(){
+  const wrap=document.getElementById('sj-tiers-wrap');if(!wrap)return;
+  wrap.innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 36px;gap:6px;align-items:center;margin-bottom:4px;font-size:11px;color:var(--text3)">
+      <span>Od (kos)</span><span>Do (kos)</span><span>Cena/kos (€)</span><span></span>
+    </div>`+
+  window._strojTiers.map((t,i)=>`
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 36px;gap:6px;align-items:center;margin-bottom:6px">
+      <input type="number" value="${t.od}" onchange="window._strojTiers[${i}].od=+this.value" min="0" ${i===0?'disabled':''} style="font-family:var(--mono);font-size:12px;padding:5px 8px">
+      <input type="number" value="${t.do===null?'':t.do}" placeholder="∞" onchange="window._strojTiers[${i}].do=this.value===''?null:+this.value" style="font-family:var(--mono);font-size:12px;padding:5px 8px">
+      <input type="number" value="${t.cena}" onchange="window._strojTiers[${i}].cena=+this.value" step="0.00001" min="0" class="inp-blue" style="font-family:var(--mono);font-size:12px;padding:5px 8px">
+      ${window._strojTiers.length>1?`<button class="btn btn-del" onclick="window._strojTiers.splice(${i},1);renderStrojTiers()">✕</button>`:'<span></span>'}
+    </div>`).join('');
+}
+
+function addStrojTier(){
+  const tiers=window._strojTiers;
+  const last=tiers[tiers.length-1];
+  const newOd=last.do===null?999999:last.do+1;
+  if(last.do===null)last.do=newOd-1;
+  tiers.push({od:newOd,do:null,cena:0.02});
+  renderStrojTiers();
+}
+
+async function saveStroj(id){
+  const tiers=window._strojTiers.map(t=>({...t,do:t.do===null?1e15:t.do}));
+  const obj={
+    ime:document.getElementById('sj-ime').value,
+    tip:document.getElementById('sj-tip').value,
+    hitrost:+document.getElementById('sj-hitrost').value||null,
+    setup_h:+document.getElementById('sj-setup').value||null,
+    ciscenje_h:+document.getElementById('sj-ciscenje').value||null,
+    operaterji:+document.getElementById('sj-op').value||1,
+    tiers,
+  };
+  if(id){await sb.from('stroji').update(obj).eq('id',id);}
+  else{await sb.from('stroji').insert(obj);}
+  hideModal();
+  await loadStroji();
+  await loadStrojiForSelect();
+  notif('✓ Stroj shranjen');
+}
+
+async function deleteStroj(id){
+  if(!confirm('Izbrisati stroj?'))return;
+  await sb.from('stroji').delete().eq('id',id);
+  await loadStroji();
+  await loadStrojiForSelect();
+  notif('✓ Stroj izbrisan');
 }
 
 // ── INIT ──────────────────────────────────────────
