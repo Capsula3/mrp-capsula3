@@ -566,6 +566,10 @@ tr:hover td{background:var(--surface2)}
           </div>
           <div class="flex-gap">
             <button class="btn btn-sm" onclick="showPanel('formulacije');loadFormulacije()">← Nazaj</button>
+            <label class="btn btn-sm" style="cursor:pointer" title="Naloži formulacijo stranke — Claude prebere sestavine">
+              ↑ Uvozi formulacijo
+              <input type="file" accept=".pdf,.xlsx,.xls,.csv" style="display:none" onchange="uvozFormulacijoStranke(this)">
+            </label>
             <button class="btn btn-sm" onclick="novaVerzijaFormulacije()">+ Nova verzija</button>
             <button class="btn btn-sm" onclick="naloziFormulacijoVInpute()">↗ Naloži v Inpute</button>
             <button class="btn btn-sm btn-primary" onclick="shraniFormulacijo()">💾 Shrani</button>
@@ -614,6 +618,11 @@ tr:hover td{background:var(--surface2)}
               <div class="metric"><div class="metric-label">Est. cena/kapsulo</div><div class="metric-val green" id="fd-cena-kos">— €</div></div>
             </div>
           </div>
+        </div>
+
+        <!-- Uvoz status -->
+        <div id="fd-uvoz-status" style="display:none" class="card">
+          <div class="card-body" style="padding:.875rem 1.25rem" id="fd-uvoz-status-text"></div>
         </div>
 
         <!-- Sestavine -->
@@ -2801,6 +2810,214 @@ function addQCRow(){
 
 function getQCSkupaj(){
   return qcData.reduce((s,q)=>s+(+q.cena||0)*(+q.kol||1),0);
+}
+
+async function uvozFormulacijoStranke(input){
+  const file = input.files[0];if(!file)return;
+  const statusEl = document.getElementById('fd-uvoz-status');
+  const statusTxt = document.getElementById('fd-uvoz-status-text');
+  if(statusEl)statusEl.style.display='block';
+  if(statusTxt)statusTxt.innerHTML='<span style="color:var(--text2)">⟳ Claude bere formulacijo…</span>';
+
+  try{
+    const ext = file.name.split('.').pop().toLowerCase();
+    let vsebina = '';
+    let base64 = '';
+    let isPdf = ext==='pdf';
+
+    if(isPdf || ext==='xlsx' || ext==='xls'){
+      base64 = await new Promise((res,rej)=>{
+        const r=new FileReader();
+        r.onload=()=>res(r.result.split(',')[1]);
+        r.onerror=rej;
+        r.readAsDataURL(file);
+      });
+    } else {
+      // CSV/TXT — pošlji kot tekst
+      vsebina = await file.text();
+    }
+
+    const prompt = `Si strokovnjak za branje farmacevtskih in prehranskih formulacij/receptur.
+
+Iz tega dokumenta izlušči VSE sestavine formulacije in vrni SAMO JSON brez razlage:
+{
+  "naziv_izdelka": "ime izdelka če je razvidno",
+  "velikost_kapsule": "npr. 00, 0, 1 če je razvidno",
+  "tip_kapsule": "npr. HPMC, Gelatina če je razvidno",
+  "skupaj_mg": skupaj mg vsebine če je razvidno (število),
+  "sestavine": [
+    {
+      "ime": "točno ime sestavine kot piše v dokumentu",
+      "kolicina": numerična vrednost,
+      "enota": "mg ali ml ali %",
+      "del": "A ali B ali prazno če ni razvidno",
+      "opomba": "kakršnakoli opomba ali specifikacija"
+    }
+  ]
+}
+
+Vrni SAMO JSON. Če je enota v %, pretvori v mg glede na skupno težo če je znana, sicer ohrani %.`;
+
+    let response;
+    if(isPdf){
+      response = await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,
+          messages:[{role:'user',content:[
+            {type:'document',source:{type:'base64',media_type:'application/pdf',data:base64}},
+            {type:'text',text:prompt}
+          ]}]
+        })
+      });
+    } else if(ext==='xlsx'||ext==='xls'){
+      // Za Excel najprej preberi z XLSX in pošlji kot JSON
+      const buffer = await file.arrayBuffer();
+      const wb = XLSX.read(buffer,{type:'array'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const jsonData = XLSX.utils.sheet_to_json(ws,{defval:''});
+      vsebina = JSON.stringify(jsonData);
+      response = await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,
+          messages:[{role:'user',content:`${prompt}\n\nPodatki iz Excel datoteke:\n${vsebina}`}]
+        })
+      });
+    } else {
+      response = await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,
+          messages:[{role:'user',content:`${prompt}\n\nVsebina dokumenta:\n${vsebina}`}]
+        })
+      });
+    }
+
+    const data = await response.json();
+    const text = (data.content?.map(c=>c.text||'').join('')||'').replace(/```json|```/g,'').trim();
+    const parsed = JSON.parse(text);
+
+    if(!parsed.sestavine?.length){
+      if(statusTxt)statusTxt.innerHTML='<span style="color:var(--danger)">⚠ Ni bilo mogoče prepoznati sestavin. Preverite format dokumenta.</span>';
+      return;
+    }
+
+    // Posodobi naziv če je bil prepoznan
+    if(parsed.naziv_izdelka){
+      const nazEl=document.getElementById('fd-naziv');
+      if(nazEl&&!nazEl.value)nazEl.value=parsed.naziv_izdelka;
+    }
+
+    // Prikaži predogled z ujemanjem
+    showUvozFormulacijePreview(parsed, file.name);
+
+  }catch(err){
+    if(statusTxt)statusTxt.innerHTML=`<span style="color:var(--danger)">⚠ Napaka: ${err.message}</span>`;
+  }
+  input.value='';
+}
+
+function showUvozFormulacijePreview(parsed, filename){
+  const statusEl=document.getElementById('fd-uvoz-status');
+  const statusTxt=document.getElementById('fd-uvoz-status-text');
+
+  // Za vsako sestavino poišči najboljše ujemanje v ceniku
+  const sestavineZUjemanjem = parsed.sestavine.map(s=>{
+    let najboljsi=null, score=0;
+    (cenikSestavineData||[]).forEach((c,ci)=>{
+      const sc = matchScore(s.ime, c.ime);
+      if(sc>score){score=sc;najboljsi={id:c.id,ime:c.ime,idx:ci};}
+    });
+    return{
+      ...s,
+      cenik_id: score>0.35?najboljsi?.id:null,
+      predlagano: score>0.35?najboljsi?.ime:null,
+      score,
+    };
+  });
+
+  const ujemanja = sestavineZUjemanjem.filter(s=>s.cenik_id).length;
+  const neujemanja = sestavineZUjemanjem.length - ujemanja;
+
+  statusTxt.innerHTML = `
+    <div style="margin-bottom:.75rem">
+      <span style="font-weight:500">Claude je prepoznal ${parsed.sestavine.length} sestavin</span>
+      iz <span style="font-family:var(--mono);font-size:11px">${filename}</span>
+      ${parsed.skupaj_mg?`· <span class="badge badge-gray">Skupaj: ${parsed.skupaj_mg} mg</span>`:''}
+      <span class="badge badge-green" style="margin-left:6px">${ujemanja} ujemanj v ceniku</span>
+      ${neujemanja>0?`<span class="badge badge-warn" style="margin-left:4px">${neujemanja} brez ujemanja</span>`:''}
+    </div>
+    <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th>Sestavina (iz dokumenta)</th>
+        <th>Količina</th>
+        <th>Enota</th>
+        <th>Del</th>
+        <th>Ujemanje v ceniku</th>
+        <th>Opomba</th>
+      </tr></thead>
+      <tbody>
+        ${sestavineZUjemanjem.map((s,i)=>`<tr style="${!s.cenik_id?'background:var(--warn-light)':''}">
+          <td style="font-weight:500;font-size:12px">${s.ime}</td>
+          <td class="td-mono">${s.kolicina}</td>
+          <td>${s.enota}</td>
+          <td>${s.del||'—'}</td>
+          <td>
+            <select id="uv-match-${i}" style="font-size:11px;width:100%">
+              <option value="">— Ni v ceniku / dodaj ročno —</option>
+              ${(cenikSestavineData||[]).map(c=>`<option value="${c.id}"${s.cenik_id===c.id?' selected':''}>${c.ime}</option>`).join('')}
+            </select>
+            ${s.predlagano&&s.score<0.8?`<div style="font-size:10px;color:var(--info);margin-top:2px">Predlog: ${s.predlagano} (${Math.round(s.score*100)}%)</div>`:''}
+          </td>
+          <td style="font-size:11px;color:var(--text3)">${s.opomba||'—'}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:1rem;justify-content:flex-end">
+      <button class="btn btn-sm" onclick="document.getElementById('fd-uvoz-status').style.display='none'">Prekliči</button>
+      <button class="btn btn-sm btn-primary" onclick="potrdiUvozFormulacije(${JSON.stringify(sestavineZUjemanjem).replace(/"/g,'&quot;')})">
+        ✓ Uvozi ${parsed.sestavine.length} sestavin
+      </button>
+    </div>`;
+
+  window._uvozFdData = sestavineZUjemanjem;
+}
+
+function potrdiUvozFormulacije(sestavine){
+  // Preberi dejanska ujemanja iz selectov
+  const rezultat = sestavine.map((s,i)=>{
+    const sel = document.getElementById(`uv-match-${i}`);
+    const cenikId = sel?.value||null;
+    const c = cenikId?(cenikSestavineData||[]).find(x=>x.id===cenikId):null;
+    return{
+      sestavina_id: cenikId||'',
+      ime_originalno: s.ime,
+      del: s.del||'',
+      kol: s.enota==='%'?s.kolicina:+s.kolicina||0,
+      enota: s.enota==='%'?'mg':s.enota||'mg',
+      izguba: 0,
+      min_ob: 0,
+      opomba: s.opomba||'',
+      // Če ni v ceniku, shrani originalno ime
+      _ime_za_prikaz: c?c.ime:s.ime,
+    };
+  });
+
+  // Dodaj k obstoječim ali zamenjaj
+  if(fdSestavine.length && confirm('Zamenjati obstoječe sestavine z uvoženimi?')){
+    fdSestavine = rezultat;
+  } else {
+    fdSestavine = [...fdSestavine, ...rezultat];
+  }
+
+  renderFDFormula();
+
+  const statusEl=document.getElementById('fd-uvoz-status');
+  const statusTxt=document.getElementById('fd-uvoz-status-text');
+  if(statusTxt)statusTxt.innerHTML=`<span style="color:var(--accent-text)">✓ Uvoženo ${rezultat.length} sestavin. Preverite in dopolnite manjkajoče sestavine v ceniku.</span>
+    <button class="btn btn-sm" onclick="document.getElementById('fd-uvoz-status').style.display='none'" style="margin-left:12px">Zapri</button>`;
+
+  notif(`✓ Uvoženo ${rezultat.length} sestavin`);
 }
 
 // ── FORMULACIJE ───────────────────────────────────
