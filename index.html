@@ -227,6 +227,10 @@ tr:hover td{background:var(--surface2)}
         <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M14.5 3a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5h-13a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h13z"/></svg>
         Inputi
       </div>
+      <div class="nav-item" onclick="showPanel('formulacije');loadFormulacije()">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M0 2a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1v7.5a2.5 2.5 0 0 1-2.5 2.5h-9A2.5 2.5 0 0 1 1 12.5V5a1 1 0 0 1-1-1V2zm13 9V4.5a.5.5 0 0 0-.5-.5H14V13h-.5a.5.5 0 0 0 .5.5v-2.5zM2 1.5v12h11V1.5H2z"/></svg>
+        Formulacije
+      </div>
       <div class="nav-item" onclick="showPanel('formula')">
         <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M0 2a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1v7.5a2.5 2.5 0 0 1-2.5 2.5h-9A2.5 2.5 0 0 1 1 12.5V5a1 1 0 0 1-1-1V2z"/></svg>
         Formula
@@ -538,7 +542,122 @@ tr:hover td{background:var(--surface2)}
         </div>
       </div>
 
-      <!-- FORMULA -->
+      <!-- FORMULACIJE -->
+      <div id="panel-formulacije" class="panel">
+        <div class="flex-between">
+          <div><div class="page-title">Formulacije</div><div class="page-sub">Register vseh receptur — verzioniranje, sledljivost, vezava na stranko</div></div>
+          <div class="flex-gap">
+            <input type="text" id="form-search" placeholder="Iskanje…" oninput="filterFormulacije()" style="max-width:200px;font-size:12px">
+            <select id="form-filter-stranka" onchange="filterFormulacije()" style="font-size:12px;max-width:180px">
+              <option value="">Vse stranke</option>
+            </select>
+            <button class="btn btn-sm btn-primary" onclick="novaFormulacija()">+ Nova formulacija</button>
+          </div>
+        </div>
+        <div id="formulacije-lista"></div>
+      </div>
+
+      <!-- FORMULACIJA DETAIL -->
+      <div id="panel-formulacija-detail" class="panel">
+        <div class="flex-between">
+          <div>
+            <div class="page-title" id="fd-title">Formulacija</div>
+            <div class="page-sub" id="fd-sub"></div>
+          </div>
+          <div class="flex-gap">
+            <button class="btn btn-sm" onclick="showPanel('formulacije');loadFormulacije()">← Nazaj</button>
+            <button class="btn btn-sm" onclick="novaVerzijaFormulacije()">+ Nova verzija</button>
+            <button class="btn btn-sm" onclick="naloziFormulacijoVInpute()">↗ Naloži v Inpute</button>
+            <button class="btn btn-sm btn-primary" onclick="shraniFormulacijo()">💾 Shrani</button>
+          </div>
+        </div>
+
+        <!-- Osnovni podatki -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">Podatki formulacije</span></div>
+          <div class="card-body">
+            <div class="form-grid" style="max-width:580px">
+              <label class="form-label">Naziv izdelka</label>
+              <input type="text" id="fd-naziv" class="inp-blue" placeholder="npr. OmegaCaps 1000mg">
+              <label class="form-label">Številka formulacije</label>
+              <div style="display:flex;gap:8px;align-items:center">
+                <input type="text" id="fd-stevilka" class="inp-blue" style="max-width:160px;font-family:var(--mono)">
+                <span class="badge badge-blue" id="fd-verzija-badge">v1</span>
+              </div>
+              <label class="form-label">Stranka</label>
+              <select id="fd-stranka" class="inp-blue" style="max-width:280px"></select>
+              <label class="form-label">Tip kapsulacije</label>
+              <select id="fd-tip" class="inp-blue" style="max-width:180px">
+                <option value="LIQUID">LIQUID CAPS</option>
+                <option value="PRAH">PRAH</option>
+                <option value="DUAL">DUAL</option>
+              </select>
+              <label class="form-label">Status</label>
+              <select id="fd-status" class="inp-blue" style="max-width:200px">
+                <option value="razvoj">🔧 V razvoju</option>
+                <option value="aktivna">✓ Aktivna</option>
+                <option value="arhivirana">📦 Arhivirana</option>
+              </select>
+              <label class="form-label">Opomba</label>
+              <input type="text" id="fd-opomba" placeholder="Spremembe v tej verziji…">
+            </div>
+          </div>
+        </div>
+
+        <!-- Povzetek -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">Povzetek</span></div>
+          <div class="card-body">
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem">
+              <div class="metric"><div class="metric-label">Skupna teža vsebine</div><div class="metric-val" id="fd-skupaj-mg">— mg</div></div>
+              <div class="metric"><div class="metric-label">Število sestavin</div><div class="metric-val" id="fd-stevilo">0</div></div>
+              <div class="metric"><div class="metric-label">Est. cena/kapsulo</div><div class="metric-val green" id="fd-cena-kos">— €</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sestavine -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Sestavine</span>
+            <button class="btn btn-sm" onclick="addFDRow()">+ Dodaj sestavino</button>
+          </div>
+          <div class="card-body" style="padding:.75rem">
+            <div class="tbl-wrap">
+            <table>
+              <thead><tr>
+                <th style="min-width:200px">Sestavina</th>
+                <th style="min-width:65px">Del</th>
+                <th style="min-width:110px">Kol./kapsulo</th>
+                <th style="min-width:60px">Enota</th>
+                <th style="min-width:75px">Izguba (%)</th>
+                <th style="min-width:95px">Min. obr. (kg)</th>
+                <th style="min-width:100px">Neto mg</th>
+                <th style="min-width:160px">Cene iz cenika</th>
+                <th style="width:36px"></th>
+              </tr></thead>
+              <tbody id="fd-formula-body"></tbody>
+            </table>
+            </div>
+            <div style="display:flex;justify-content:flex-end;padding:.75rem 1rem;border-top:2px solid var(--border);margin-top:.5rem">
+              <div style="text-align:right">
+                <div class="text-sm font-weight:500">Skupna teža vsebine</div>
+                <div style="font-family:var(--mono);font-weight:700;font-size:18px;color:var(--accent-text)" id="fd-skupaj-total">— mg</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Zgodovina verzij -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">Zgodovina verzij</span></div>
+          <div class="card-body" style="padding:.75rem">
+            <div id="fd-verzije-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FORMULA (delovni list) -->
       <div id="panel-formula" class="panel">
         <div class="flex-between">
           <div><div class="page-title">Formula izdelka</div><div class="page-sub">Sestavine iz cenika — cena se potegne avtomatsko glede na količino v seriji</div></div>
@@ -2682,6 +2801,299 @@ function addQCRow(){
 
 function getQCSkupaj(){
   return qcData.reduce((s,q)=>s+(+q.cena||0)*(+q.kol||1),0);
+}
+
+// ── FORMULACIJE ───────────────────────────────────
+
+let formulacijeData = [];
+let aktivnaFormulacija = null;
+let fdSestavine = [];
+
+async function loadFormulacije(){
+  const{data}=await sb.from('formule')
+    .select('*,stranke(podjetje)')
+    .order('created_at',{ascending:false});
+  formulacijeData = data||[];
+
+  // Posodobi filter stranke
+  const sel = document.getElementById('form-filter-stranka');
+  if(sel){
+    const strankeIds = [...new Set(formulacijeData.filter(f=>f.stranka_id).map(f=>f.stranka_id))];
+    const strankeOpcije = strankeIds.map(id=>{
+      const f = formulacijeData.find(x=>x.stranka_id===id);
+      return`<option value="${id}">${f?.stranke?.podjetje||id}</option>`;
+    }).join('');
+    sel.innerHTML='<option value="">Vse stranke</option>'+strankeOpcije;
+  }
+
+  renderFormulacije();
+}
+
+function filterFormulacije(){ renderFormulacije(); }
+
+function renderFormulacije(){
+  const el = document.getElementById('formulacije-lista');if(!el)return;
+  const q = (document.getElementById('form-search')?.value||'').toLowerCase();
+  const strankaFilter = document.getElementById('form-filter-stranka')?.value||'';
+
+  // Grupiraj po stevilki formulacije (vse verzije skupaj)
+  const grupirane = {};
+  formulacijeData.forEach(f=>{
+    const key = f.stevilka||f.id;
+    if(!grupirane[key])grupirane[key]=[];
+    grupirane[key].push(f);
+  });
+
+  let html = '';
+  Object.entries(grupirane).forEach(([key,verzije])=>{
+    // Sortiraj verzije — najnovejša prva
+    verzije.sort((a,b)=>b.verzija-a.verzija);
+    const zadnja = verzije[0];
+
+    // Filtri
+    if(q && !zadnja.naziv?.toLowerCase().includes(q) && !key.toLowerCase().includes(q)) return;
+    if(strankaFilter && zadnja.stranka_id !== strankaFilter) return;
+
+    const statusBadge = {
+      razvoj:'<span class="badge badge-warn">🔧 V razvoju</span>',
+      aktivna:'<span class="badge badge-green">✓ Aktivna</span>',
+      arhivirana:'<span class="badge badge-gray">📦 Arhivirana</span>',
+    }[zadnja.status||'razvoj']||'';
+
+    html+=`
+    <div class="card" style="margin-bottom:.875rem">
+      <div style="padding:.875rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="width:42px;height:42px;border-radius:var(--radius);background:var(--accent-light);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;font-weight:600;color:var(--accent-text);flex-shrink:0">${key}</div>
+          <div>
+            <div style="font-weight:500;font-size:14px">${zadnja.naziv||'—'}</div>
+            <div class="text-sm" style="margin-top:2px">
+              ${zadnja.stranke?.podjetje?`<span>${zadnja.stranke.podjetje}</span> · `:''}
+              <span>${zadnja.tip_kapsulacije||'—'}</span> ·
+              <span>${verzije.length} ${verzije.length===1?'verzija':'verzij'}</span> ·
+              <span>${new Date(zadnja.created_at).toLocaleDateString('sl-SI')}</span>
+            </div>
+          </div>
+        </div>
+        <div class="flex-gap">
+          ${statusBadge}
+          <span class="badge badge-blue" style="font-family:var(--mono)">v${zadnja.verzija||1}</span>
+          <span class="badge badge-gray">${(zadnja.sestavine||[]).length} sestavin</span>
+          <button class="btn btn-sm" onclick="odpriFormulacijo('${zadnja.id}')">Odpri</button>
+          <button class="btn btn-del" onclick="deleteFormulacija('${key}','${zadnja.naziv}')">✕</button>
+        </div>
+      </div>
+      ${verzije.length>1?`
+      <div style="padding:.5rem 1.25rem;border-top:1px solid var(--border);background:var(--surface2);display:flex;gap:8px;flex-wrap:wrap">
+        ${verzije.map(v=>`<button class="btn btn-sm" onclick="odpriFormulacijo('${v.id}')" style="font-family:var(--mono);font-size:11px">v${v.verzija||1}${v.id===zadnja.id?' ★':''}</button>`).join('')}
+      </div>`:''}
+    </div>`;
+  });
+
+  el.innerHTML = html||'<div class="empty">Ni formulacij. Ustvarite novo.</div>';
+}
+
+async function novaFormulacija(){
+  // Generiraj številko
+  const{count}=await sb.from('formule').select('*',{count:'exact',head:true});
+  const stevilka = 'F-'+String((count||0)+1).padStart(3,'0');
+  aktivnaFormulacija = null;
+  fdSestavine = [];
+  const g=id=>document.getElementById(id);
+  if(g('fd-naziv'))g('fd-naziv').value='';
+  if(g('fd-stevilka'))g('fd-stevilka').value=stevilka;
+  if(g('fd-opomba'))g('fd-opomba').value='Začetna verzija';
+  if(g('fd-status'))g('fd-status').value='razvoj';
+  if(g('fd-tip'))g('fd-tip').value='LIQUID';
+  if(g('fd-verzija-badge'))g('fd-verzija-badge').textContent='v1';
+  if(g('fd-title'))g('fd-title').textContent='Nova formulacija';
+  if(g('fd-sub'))g('fd-sub').textContent=stevilka+' — v1';
+  if(g('fd-verzije-list'))g('fd-verzije-list').innerHTML='<div class="text-sm">—</div>';
+  syncFDStrankaSelect();
+  renderFDFormula();
+  showPanel('formulacija-detail');
+}
+
+async function odpriFormulacijo(id){
+  const{data,error}=await sb.from('formule')
+    .select('*,stranke(podjetje)')
+    .eq('id',id).single();
+  if(error||!data){notif('Napaka pri nalaganju');return;}
+
+  aktivnaFormulacija = data;
+  fdSestavine = data.sestavine||[];
+
+  const g=id=>document.getElementById(id);
+  if(g('fd-naziv'))g('fd-naziv').value=data.naziv||'';
+  if(g('fd-stevilka'))g('fd-stevilka').value=data.stevilka||'';
+  if(g('fd-opomba'))g('fd-opomba').value=data.opomba||'';
+  if(g('fd-status'))g('fd-status').value=data.status||'razvoj';
+  if(g('fd-tip'))g('fd-tip').value=data.tip_kapsulacije||'LIQUID';
+  if(g('fd-verzija-badge'))g('fd-verzija-badge').textContent='v'+(data.verzija||1);
+  if(g('fd-title'))g('fd-title').textContent=data.naziv||'Formulacija';
+  if(g('fd-sub'))g('fd-sub').textContent=(data.stevilka||'—')+' — v'+(data.verzija||1);
+
+  // Vse verzije
+  const{data:vseVerzije}=await sb.from('formule')
+    .select('id,verzija,naziv,opomba,created_at,status')
+    .eq('stevilka',data.stevilka)
+    .order('verzija',{ascending:false});
+
+  const verzEl=g('fd-verzije-list');
+  if(verzEl && vseVerzije?.length){
+    verzEl.innerHTML=vseVerzije.map(v=>`
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="badge badge-blue" style="font-family:var(--mono)">v${v.verzija||1}</span>
+          <span>${v.opomba||'—'}</span>
+        </div>
+        <div class="flex-gap">
+          <span class="text-sm">${new Date(v.created_at).toLocaleDateString('sl-SI')}</span>
+          ${v.id!==id?`<button class="btn btn-sm" onclick="odpriFormulacijo('${v.id}')">Odpri</button>`:'<span class="badge badge-green">Trenutna</span>'}
+        </div>
+      </div>`).join('');
+  }
+
+  syncFDStrankaSelect(data.stranka_id);
+  renderFDFormula();
+  showPanel('formulacija-detail');
+}
+
+function syncFDStrankaSelect(selected){
+  const sel=document.getElementById('fd-stranka');if(!sel)return;
+  sel.innerHTML='<option value="">— Brez stranke —</option>'+
+    (strankeData||[]).map(s=>`<option value="${s.id}"${s.id===selected?' selected':''}>${s.podjetje}</option>`).join('');
+}
+
+function renderFDFormula(){
+  const body=document.getElementById('fd-formula-body');if(!body)return;
+  body.innerHTML=fdSestavine.map((f,i)=>{
+    const c=(cenikSestavineData||[]).find(x=>x.id===f.sestavina_id);
+    const cene = c ? TIER_COLS.map((col,ti)=>({kg:TIER_KG[ti],cena:c[col]})).filter(x=>x.cena) : [];
+    const minC = cene.length ? Math.min(...cene.map(x=>x.cena)) : 0;
+    const maxC = cene.length ? Math.max(...cene.map(x=>x.cena)) : 0;
+    const netoMg = (f.kol||0)*(1+(f.izguba||0)/100);
+    return`<tr>
+      <td><select onchange="fdSestavine[${i}].sestavina_id=this.value;renderFDFormula()" style="min-width:190px">
+        <option value="">— Izberi —</option>
+        ${(cenikSestavineData||[]).map(cs=>`<option value="${cs.id}"${f.sestavina_id===cs.id?' selected':''}>${cs.ime}</option>`).join('')}
+      </select></td>
+      <td><select onchange="fdSestavine[${i}].del=this.value" style="max-width:60px">
+        <option value=""${!f.del?' selected':''}>—</option>
+        <option value="A"${f.del==='A'?' selected':''}>A</option>
+        <option value="B"${f.del==='B'?' selected':''}>B</option>
+      </select></td>
+      <td><input type="number" value="${f.kol||0}" class="inp-blue" onchange="fdSestavine[${i}].kol=+this.value;renderFDFormula()" min="0" step="0.001"></td>
+      <td><select onchange="fdSestavine[${i}].enota=this.value;renderFDFormula()" style="max-width:60px">
+        <option${(f.enota||'mg')==='mg'?' selected':''}>mg</option>
+        <option${f.enota==='ml'?' selected':''}>ml</option>
+      </select></td>
+      <td><input type="number" value="${f.izguba||0}" onchange="fdSestavine[${i}].izguba=+this.value;renderFDFormula()" min="0" step="0.1"></td>
+      <td><input type="number" value="${f.min_ob||0}" onchange="fdSestavine[${i}].min_ob=+this.value" min="0" step="0.1"></td>
+      <td class="td-mono" style="font-weight:500;color:var(--accent-text)">${netoMg.toFixed(2)} mg</td>
+      <td>${cene.length?`<div style="font-size:10px;line-height:1.8">
+        ${cene.map(x=>`<span style="display:inline-block;margin-right:5px;white-space:nowrap">
+          <span style="color:var(--text3)">${x.kg}kg:</span>
+          <span style="font-family:var(--mono);font-weight:500;color:${x.cena===minC?'var(--accent-text)':x.cena===maxC?'var(--text2)':'var(--text)'}">${f2(x.cena)}</span>
+        </span>`).join('')}
+      </div>`:'<span class="text-sm">—</span>'}</td>
+      <td><button class="btn btn-del" onclick="fdSestavine.splice(${i},1);renderFDFormula()">✕</button></td>
+    </tr>`;
+  }).join('');
+  updateFDSummary();
+}
+
+function updateFDSummary(){
+  const skupajMg = fdSestavine.reduce((s,f)=>{
+    return s + (f.enota==='ml'?(f.kol||0)*1000:(f.kol||0));
+  },0);
+  let estCena=0;
+  fdSestavine.forEach(f=>{
+    const c=(cenikSestavineData||[]).find(x=>x.id===f.sestavina_id);if(!c)return;
+    estCena += ((f.kol||0)*(1+(f.izguba||0)/100)/1e6)*getCenikCena(c,100);
+  });
+  const set=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val;};
+  set('fd-skupaj-mg',skupajMg.toFixed(1)+' mg');
+  set('fd-stevilo',fdSestavine.filter(f=>f.sestavina_id).length);
+  set('fd-cena-kos',estCena>0?f4(estCena)+' €':'— €');
+  set('fd-skupaj-total',skupajMg.toFixed(1)+' mg');
+}
+
+function addFDRow(){
+  fdSestavine.push({sestavina_id:'',del:'',kol:100,enota:'mg',izguba:0,min_ob:0});
+  renderFDFormula();
+}
+
+async function shraniFormulacijo(){
+  const g=id=>document.getElementById(id);
+  const naziv=g('fd-naziv')?.value||'';
+  const stevilka=g('fd-stevilka')?.value||'';
+  if(!naziv){notif('⚠ Vnesite naziv formulacije',2500);return;}
+  if(!stevilka){notif('⚠ Vnesite številko formulacije',2500);return;}
+
+  const obj={
+    naziv,
+    stevilka,
+    stranka_id:g('fd-stranka')?.value||null,
+    tip_kapsulacije:g('fd-tip')?.value||'LIQUID',
+    status:g('fd-status')?.value||'razvoj',
+    opomba:g('fd-opomba')?.value||'',
+    sestavine:fdSestavine,
+    verzija:aktivnaFormulacija?.verzija||1,
+    updated_at:new Date().toISOString(),
+  };
+
+  let error;
+  if(aktivnaFormulacija){
+    ({error}=await sb.from('formule').update(obj).eq('id',aktivnaFormulacija.id));
+  } else {
+    obj.verzija=1;
+    obj.created_at=new Date().toISOString();
+    const res=await sb.from('formule').insert(obj).select().single();
+    error=res.error;
+    if(!error)aktivnaFormulacija=res.data;
+  }
+  if(error){notif('⚠ Napaka: '+error.message,3500);return;}
+  notif('✓ Formulacija shranjena');
+  await loadFormulacije();
+}
+
+async function novaVerzijaFormulacije(){
+  if(!aktivnaFormulacija){notif('Najprej shranite formulacijo',2500);return;}
+  const novaVerzija=(aktivnaFormulacija.verzija||1)+1;
+  const obj={
+    ...aktivnaFormulacija,
+    id:undefined,
+    verzija:novaVerzija,
+    opomba:'',
+    status:'razvoj',
+    created_at:new Date().toISOString(),
+    updated_at:new Date().toISOString(),
+  };
+  const{data,error}=await sb.from('formule').insert(obj).select().single();
+  if(error){notif('⚠ Napaka: '+error.message,3500);return;}
+  notif(`✓ Ustvarjena v${novaVerzija}`);
+  await odpriFormulacijo(data.id);
+}
+
+function naloziFormulacijoVInpute(){
+  if(!fdSestavine.length){notif('Ni sestavin v formulaciji',2500);return;}
+  formulaData=[...fdSestavine];
+  const g=id=>document.getElementById(id);
+  if(g('i-naziv')&&aktivnaFormulacija?.naziv)g('i-naziv').value=aktivnaFormulacija.naziv;
+  if(g('i-tip')&&aktivnaFormulacija?.tip_kapsulacije)g('i-tip').value=aktivnaFormulacija.tip_kapsulacije;
+  if(g('i-stranka')&&aktivnaFormulacija?.stranka_id)g('i-stranka').value=aktivnaFormulacija.stranka_id;
+  renderFormula();
+  showPanel('formula');
+  notif('✓ Formulacija naložena v Inpute');
+}
+
+async function deleteFormulacija(stevilka, naziv){
+  if(!confirm(`Izbrisati vse verzije formulacije ${stevilka} (${naziv})?\nTega dejanja ni mogoče razveljaviti.`))return;
+  const{error}=await sb.from('formule').delete().eq('stevilka',stevilka);
+  if(error){notif('⚠ Napaka: '+error.message,3500);return;}
+  notif(`✓ Formulacija ${stevilka} izbrisana`);
+  await loadFormulacije();
 }
 
 // ── INIT ──────────────────────────────────────────
