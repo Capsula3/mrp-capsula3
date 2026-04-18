@@ -308,7 +308,18 @@ tr:hover td{background:var(--surface2)}
               <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" style="position:absolute;left:8px;top:50%;transform:translateY(-50%);opacity:.4;pointer-events:none"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.099zm-5.242 1.656a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11z"/></svg>
               <input type="text" id="cs-search" placeholder="Iskanje…" oninput="filterCenikSestavin()" style="padding-left:28px;max-width:220px;font-size:12px">
             </div>
+            <label class="btn btn-sm" style="cursor:pointer" title="Uvozi Excel ali CSV datoteko">
+              ↑ Uvozi Excel/CSV
+              <input type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="uvozCenikSestavin(this)">
+            </label>
+            <button class="btn btn-sm" onclick="izvozCenikSestavin()" title="Izvozi v Excel">↓ Izvozi Excel</button>
             <button class="btn btn-sm btn-primary" onclick="showCenikForm()">+ Dodaj</button>
+          </div>
+        </div>
+        <!-- Uvoz status -->
+        <div id="uvoz-status" style="display:none" class="card">
+          <div class="card-body" style="padding:.875rem 1.25rem">
+            <div id="uvoz-status-text" style="font-size:13px"></div>
           </div>
         </div>
         <div class="card">
@@ -812,8 +823,8 @@ tr:hover td{background:var(--surface2)}
 
 <script>
 // ── CONFIG — zamenjajte z vašimi Supabase kredenciali ──────
-const SUPABASE_URL = 'https://unsolrdpbcvpcjtmoswp.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVuc29scmRwYmN2cGNqdG1vc3dwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYzNjcyNzUsImV4cCI6MjA5MTk0MzI3NX0.WsTn981EfcQCeeapUp7kCp6IMm4J2c7xGmjAnC9wOjI';
+const SUPABASE_URL = 'https://YOUR_PROJECT.supabase.co';
+const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
 // ────────────────────────────────────────────────────────────
 
 const { createClient } = supabase;
@@ -2266,6 +2277,243 @@ async function deleteStroj(id){
   await loadStroji();
   await loadStrojiForSelect();
   notif('✓ Stroj izbrisan');
+}
+
+// ── UVOZ / IZVOZ CENIK SESTAVIN ───────────────────
+
+async function uvozCenikSestavin(input){
+  const file = input.files[0];if(!file)return;
+  const statusEl = document.getElementById('uvoz-status');
+  const statusTxt = document.getElementById('uvoz-status-text');
+  if(statusEl)statusEl.style.display='block';
+  if(statusTxt)statusTxt.innerHTML='<span style="color:var(--text2)">⟳ Berem datoteko…</span>';
+
+  try{
+    const ext = file.name.split('.').pop().toLowerCase();
+    let vrstice = [];
+
+    if(ext==='csv'){
+      // CSV uvoz
+      const text = await file.text();
+      const lines = text.split('\n').filter(l=>l.trim());
+      const header = lines[0].split(/[,;]/).map(h=>h.trim().toLowerCase().replace(/"/g,''));
+      vrstice = lines.slice(1).map(line=>{
+        const cells = line.split(/[,;]/).map(c=>c.trim().replace(/"/g,''));
+        const obj = {};
+        header.forEach((h,i)=>obj[h]=cells[i]||'');
+        return obj;
+      });
+    } else {
+      // Excel uvoz (XLSX)
+      const buffer = await file.arrayBuffer();
+      const wb = XLSX.read(buffer,{type:'array'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      vrstice = XLSX.utils.sheet_to_json(ws,{defval:''});
+    }
+
+    if(!vrstice.length){
+      if(statusTxt)statusTxt.innerHTML='<span style="color:var(--danger)">⚠ Datoteka je prazna ali napačnega formata.</span>';
+      return;
+    }
+
+    // Prikaži predogled in potrdi
+    showUvozPreview(vrstice, file.name);
+
+  }catch(err){
+    if(statusTxt)statusTxt.innerHTML=`<span style="color:var(--danger)">⚠ Napaka: ${err.message}</span>`;
+  }
+  input.value='';
+}
+
+function showUvozPreview(vrstice, filename){
+  // Pametno mapiranje stolpcev
+  const prvaVrstica = vrstice[0];
+  const kljuci = Object.keys(prvaVrstica);
+
+  // Avtomatično poišči stolpce
+  const najdiKolono = (...iskani) => kljuci.find(k=>iskani.some(i=>k.toLowerCase().includes(i.toLowerCase())))||'';
+
+  const mapiranje = {
+    ime: najdiKolono('ime','naziv','name','sestavina','ingredient'),
+    dobavitelj: najdiKolona('dobavitelj','supplier','vendor','dobav'),
+    enota: najdiKolona('enota','unit','enot'),
+    cena_1kg: najdiKolona('1 kg','1kg','cena 1','price 1'),
+    cena_5kg: najdiKolona('5 kg','5kg','cena 5','price 5'),
+    cena_10kg: najdiKolona('10 kg','10kg','cena 10','price 10'),
+    cena_25kg: najdiKolona('25 kg','25kg','cena 25','price 25'),
+    cena_50kg: najdiKolona('50 kg','50kg','cena 50','price 50'),
+    cena_100kg: najdiKolona('100 kg','100kg','cena 100','price 100'),
+    cena_500kg: najdiKolona('500 kg','500kg','cena 500','price 500'),
+    cena_1000kg: najdiKolona('1000 kg','1000kg','1t','cena 1000','price 1000'),
+    min_narocilo: najdiKolona('min','minimum','min narocilo','min order'),
+    opomba: najdiKolona('opomba','note','komentar','remark'),
+  };
+
+  const vzorec = vrstice.slice(0,3);
+
+  showModal(`
+    <div style="display:flex;justify-content:space-between;margin-bottom:1rem">
+      <div style="font-size:15px;font-weight:500">Uvoz cenika — ${filename}</div>
+      <button class="btn btn-sm" onclick="hideModal()">✕</button>
+    </div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:1rem">
+      Najdenih <b>${vrstice.length}</b> vrstic. Preverite mapiranje stolpcev:
+    </div>
+    <div class="tbl-wrap" style="margin-bottom:1rem">
+    <table>
+      <thead><tr><th>Polje</th><th>Stolpec v datoteki</th><th>Primer vrednosti</th></tr></thead>
+      <tbody>
+        ${Object.entries(mapiranje).map(([polje,kol])=>`<tr>
+          <td style="font-size:12px;font-weight:500">${polje.replace(/_/g,' ')}</td>
+          <td><select id="map-${polje}" style="font-size:12px;width:100%">
+            <option value="">— Preskoči —</option>
+            ${kljuci.map(k=>`<option value="${k}"${kol===k?' selected':''}>${k}</option>`).join('')}
+          </select></td>
+          <td style="font-size:11px;color:var(--text3)">${kol&&vzorec[0]?vzorec[0][kol]||'—':'—'}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+    </div>
+    <div style="background:var(--warn-light);border:1px solid var(--warn);border-radius:var(--radius);padding:.75rem;font-size:12px;margin-bottom:1rem">
+      <b>Pozor:</b> Izberite kako ravnati z obstoječimi sestavinami:
+      <div style="display:flex;gap:1rem;margin-top:.5rem">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="radio" name="uvoz-nacin" value="dodaj" checked> Samo dodaj nove
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="radio" name="uvoz-nacin" value="zamenjaj"> Zamenjaj obstoječe
+        </label>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn" onclick="hideModal()">Prekliči</button>
+      <button class="btn btn-primary" onclick="izvedziUvoz(${JSON.stringify(vrstice).replace(/'/g,'\\\'')})">↑ Uvozi ${vrstice.length} sestavin</button>
+    </div>`);
+
+  window._uvozVrstice = vrstice;
+}
+
+function najdiKolona(...iskani){
+  const prvaVrstica = window._uvozVrstice?.[0]||{};
+  const kljuci = Object.keys(prvaVrstica);
+  return kljuci.find(k=>iskani.some(i=>k.toLowerCase().includes(i.toLowerCase())))||'';
+}
+
+async function izvedziUvoz(vrstice){
+  const nacin = document.querySelector('input[name="uvoz-nacin"]:checked')?.value||'dodaj';
+
+  // Preberi mapiranje
+  const map = {};
+  ['ime','dobavitelj','enota','cena_1kg','cena_5kg','cena_10kg','cena_25kg',
+   'cena_50kg','cena_100kg','cena_500kg','cena_1000kg','min_narocilo','opomba'].forEach(p=>{
+    const sel = document.getElementById('map-'+p);
+    if(sel&&sel.value)map[p]=sel.value;
+  });
+
+  if(!map.ime){
+    notif('⚠ Izberite stolpec za Ime sestavine!',3000);
+    return;
+  }
+
+  hideModal();
+  const statusTxt = document.getElementById('uvoz-status-text');
+  if(statusTxt)statusTxt.innerHTML=`<span style="color:var(--text2)">⟳ Uvažam ${vrstice.length} sestavin…</span>`;
+
+  // Pripravi objekte
+  const parseNum = v => {
+    if(!v||v==='')return null;
+    const n = +String(v).replace(/[^0-9.,]/g,'').replace(',','.');
+    return isNaN(n)?null:n;
+  };
+
+  const objekti = vrstice
+    .filter(v=>v[map.ime]&&String(v[map.ime]).trim())
+    .map(v=>({
+      ime: String(v[map.ime]||'').trim(),
+      dobavitelj: map.dobavitelj?String(v[map.dobavitelj]||'').trim():'',
+      enota: map.enota?String(v[map.enota]||'kg').trim()||'kg':'kg',
+      cena_1kg:   map.cena_1kg?parseNum(v[map.cena_1kg]):null,
+      cena_5kg:   map.cena_5kg?parseNum(v[map.cena_5kg]):null,
+      cena_10kg:  map.cena_10kg?parseNum(v[map.cena_10kg]):null,
+      cena_25kg:  map.cena_25kg?parseNum(v[map.cena_25kg]):null,
+      cena_50kg:  map.cena_50kg?parseNum(v[map.cena_50kg]):null,
+      cena_100kg: map.cena_100kg?parseNum(v[map.cena_100kg]):null,
+      cena_500kg: map.cena_500kg?parseNum(v[map.cena_500kg]):null,
+      cena_1000kg:map.cena_1000kg?parseNum(v[map.cena_1000kg]):null,
+      min_narocilo:map.min_narocilo?parseNum(v[map.min_narocilo])||0:0,
+      opomba:     map.opomba?String(v[map.opomba]||'').trim():'',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }));
+
+  try{
+    let dodanih=0, preskocenih=0, napak=0;
+
+    if(nacin==='dodaj'){
+      // Preveri kateri že obstajajo
+      const{data:obstojeciData}=await sb.from('cenik_sestavin').select('ime');
+      const obstojeciImena=new Set((obstojeciData||[]).map(x=>x.ime.toLowerCase()));
+      const novi=objekti.filter(o=>!obstojeciImena.has(o.ime.toLowerCase()));
+      preskocenih=objekti.length-novi.length;
+      if(novi.length){
+        const{error}=await sb.from('cenik_sestavin').insert(novi);
+        if(error)throw error;
+        dodanih=novi.length;
+      }
+    } else {
+      // Zamenjaj — upsert po imenu
+      for(const obj of objekti){
+        const{data:obs}=await sb.from('cenik_sestavin').select('id').eq('ime',obj.ime).single();
+        if(obs){
+          const{error}=await sb.from('cenik_sestavin').update({...obj,updated_at:new Date().toISOString()}).eq('id',obs.id);
+          if(error)napak++;else dodanih++;
+        } else {
+          const{error}=await sb.from('cenik_sestavin').insert(obj);
+          if(error)napak++;else dodanih++;
+        }
+      }
+    }
+
+    await loadCenikSestavin();
+    await loadCenikSestavineForFormula();
+
+    const statusTxt=document.getElementById('uvoz-status-text');
+    if(statusTxt)statusTxt.innerHTML=`
+      <span style="color:var(--accent-text)">✓ Uvoz zaključen:</span>
+      <span class="badge badge-green" style="margin-left:8px">${dodanih} dodanih</span>
+      ${preskocenih>0?`<span class="badge badge-gray" style="margin-left:4px">${preskocenih} preskočenih (že obstajajo)</span>`:''}
+      ${napak>0?`<span class="badge badge-red" style="margin-left:4px">${napak} napak</span>`:''}
+      <button class="btn btn-sm" onclick="document.getElementById('uvoz-status').style.display='none'" style="margin-left:12px">✕ Zapri</button>`;
+
+    notif(`✓ Uvoženo ${dodanih} sestavin`);
+  }catch(err){
+    const statusTxt=document.getElementById('uvoz-status-text');
+    if(statusTxt)statusTxt.innerHTML=`<span style="color:var(--danger)">⚠ Napaka pri uvozu: ${err.message}</span>`;
+    notif('⚠ Napaka pri uvozu',3500);
+  }
+}
+
+function izvozCenikSestavin(){
+  if(!cenikSestavineData?.length){notif('Ni podatkov za izvoz');return;}
+  const ws = XLSX.utils.json_to_sheet(cenikSestavineData.map(c=>({
+    'Ime sestavine': c.ime,
+    'Dobavitelj': c.dobavitelj||'',
+    'Enota': c.enota||'kg',
+    '1 kg': c.cena_1kg||'',
+    '5 kg': c.cena_5kg||'',
+    '10 kg': c.cena_10kg||'',
+    '25 kg': c.cena_25kg||'',
+    '50 kg': c.cena_50kg||'',
+    '100 kg': c.cena_100kg||'',
+    '500 kg': c.cena_500kg||'',
+    '1000 kg': c.cena_1000kg||'',
+    'Min. narocilo': c.min_narocilo||0,
+    'Opomba': c.opomba||'',
+  })));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Cenik sestavin');
+  XLSX.writeFile(wb,`cenik_sestavin_${new Date().toISOString().slice(0,10)}.xlsx`);
+  notif('✓ Excel izvožen');
 }
 
 // ── POTROŠNI MATERIAL ─────────────────────────────
