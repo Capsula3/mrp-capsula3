@@ -1546,7 +1546,10 @@ async function loadNalogi(){
     <td>${n.datum_rok||'—'}</td>
     <td class="td-mono">${fN(n.kolicina||0)}</td>
     <td><span class="badge ${statusBadgeClass(n.status)}">${n.status}</span></td>
-    <td><button class="btn btn-sm" onclick="openNalog('${n.id}')">Odpri</button></td>
+    <td><div style="display:flex;gap:4px">
+      <button class="btn btn-sm" onclick="openNalog('${n.id}')">Odpri</button>
+      <button class="btn btn-del" onclick="deleteNalog('${n.id}','${n.stevilka}')" title="Izbriši nalog">✕</button>
+    </div></td>
   </tr>`).join('');
 }
 
@@ -1575,6 +1578,14 @@ async function novNalog(){
 
 let aktivniNalog = null;
 let dnSestavine = [];
+
+async function deleteNalog(id, stevilka){
+  if(!confirm(`Izbrisati delovni nalog ${stevilka}? Tega dejanja ni mogoče razveljaviti.`))return;
+  const{error}=await sb.from('delovni_nalogi').delete().eq('id',id);
+  if(error){notif('⚠ Napaka: '+error.message,3500);return;}
+  notif(`✓ Nalog ${stevilka} izbrisan`);
+  await loadNalogi();
+}
 
 async function openNalog(id){
   const{data,error}=await sb.from('delovni_nalogi')
