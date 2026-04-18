@@ -552,9 +552,8 @@ tr:hover td{background:var(--surface2)}
         <div class="card">
           <div class="card-header"><span class="card-title">Povzetek formule</span></div>
           <div class="card-body">
-            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem" id="formula-summary">
-              <div class="metric"><div class="metric-label">Skupna teža kapsule</div><div class="metric-val" id="fs-skupaj-mg">— mg</div></div>
-              <div class="metric"><div class="metric-label">Teža brez lupine</div><div class="metric-val" id="fs-vsebina-mg">— mg</div></div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem" id="formula-summary">
+              <div class="metric"><div class="metric-label">Skupna teža vsebine</div><div class="metric-val" id="fs-skupaj-mg">— mg</div></div>
               <div class="metric"><div class="metric-label">Število sestavin</div><div class="metric-val" id="fs-stevilo">0</div></div>
               <div class="metric"><div class="metric-label">Est. cena/kapsulo</div><div class="metric-val green" id="fs-cena-kos">— €</div></div>
             </div>
@@ -584,15 +583,7 @@ tr:hover td{background:var(--surface2)}
             <!-- Skupaj -->
             <div style="display:flex;justify-content:flex-end;gap:2rem;padding:.75rem 1rem;border-top:2px solid var(--border);margin-top:.5rem">
               <div style="text-align:right">
-                <div class="text-sm">Skupaj vsebina (brez lupine)</div>
-                <div style="font-family:var(--mono);font-weight:500;font-size:15px" id="formula-skupaj-mg">— mg</div>
-              </div>
-              <div style="text-align:right">
-                <div class="text-sm">+ Lupina kapsule (est.)</div>
-                <div style="font-family:var(--mono);font-size:13px;color:var(--text2)" id="formula-lupina-mg">— mg</div>
-              </div>
-              <div style="text-align:right">
-                <div class="text-sm" style="font-weight:500">Skupna teža kapsule</div>
+                <div class="text-sm" style="font-weight:500">Skupna teža vsebine</div>
                 <div style="font-family:var(--mono);font-weight:700;font-size:18px;color:var(--accent-text)" id="formula-skupaj-total">— mg</div>
               </div>
             </div>
@@ -1355,17 +1346,10 @@ function renderFormula(){
 }
 
 function updateFormulaSummary(){
-  // Skupaj mg vsebine
   const skupajMg = formulaData.reduce((s,f)=>{
     const mg = f.enota==='ml' ? (f.kol||0)*1000 : (f.kol||0);
     return s + mg;
   }, 0);
-
-  // Lupina — potegni iz izbrane kapsule
-  const kapsId = document.getElementById('i-kaps-select')?.value;
-  const kaps = kapsId ? (cenikKapsulData||[]).find(k=>k.id===kapsId) : null;
-  const lupinaKg = kaps?.velikost ? LUPINA_TEZA[kaps.velikost]||100 : 100;
-  const skupajTotal = skupajMg + lupinaKg;
 
   // Ocena cene/kapsulo iz cenika (100kg razred)
   let estCena = 0;
@@ -1374,19 +1358,14 @@ function updateFormulaSummary(){
     if(!c)return;
     const kol_mg = (f.kol||0)*(1+(f.izguba||0)/100);
     const kg_na_kos = kol_mg/1e6;
-    const cena = getCenikCena(c, 100); // 100kg razred kot ocena
-    estCena += kg_na_kos * cena;
+    estCena += kg_na_kos * getCenikCena(c, 100);
   });
 
-  // Posodobi UI
   const set=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val;};
-  set('fs-skupaj-mg', skupajTotal.toFixed(1)+' mg');
-  set('fs-vsebina-mg', skupajMg.toFixed(1)+' mg');
+  set('fs-skupaj-mg', skupajMg.toFixed(1)+' mg');
   set('fs-stevilo', formulaData.filter(f=>f.sestavina_id).length);
   set('fs-cena-kos', estCena>0 ? f4(estCena)+' €' : '— €');
-  set('formula-skupaj-mg', skupajMg.toFixed(1)+' mg');
-  set('formula-lupina-mg', '+ '+lupinaKg+' mg');
-  set('formula-skupaj-total', skupajTotal.toFixed(1)+' mg');
+  set('formula-skupaj-total', skupajMg.toFixed(1)+' mg');
 }
 
 function addFormulaRow(){
