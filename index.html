@@ -505,6 +505,123 @@ tr:hover td{background:var(--surface2)}
         </div>
       </div>
 
+      <!-- DELOVNI NALOG DETAIL -->
+      <div id="panel-nalog-detail" class="panel">
+        <div class="flex-between">
+          <div>
+            <div class="page-title" id="dn-page-title">Delovni nalog</div>
+            <div class="page-sub" id="dn-page-sub"></div>
+          </div>
+          <div class="flex-gap">
+            <button class="btn btn-sm" onclick="showPanel('nalogi');loadNalogi()">← Nazaj</button>
+            <button class="btn btn-sm" onclick="shraniNalog()">💾 Shrani</button>
+            <button class="btn btn-sm" onclick="window.print()">🖨 Natisni</button>
+          </div>
+        </div>
+
+        <!-- Osnovni podatki -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">Osnovni podatki naloga</span></div>
+          <div class="card-body">
+            <div class="form-grid" style="max-width:600px">
+              <label class="form-label">Stranka</label>
+              <div id="dn-stranka-prikaz" style="font-size:13px;color:var(--text2)">—</div>
+              <label class="form-label">Ime izdelka</label>
+              <input type="text" id="dn-naziv" class="inp-blue">
+              <label class="form-label">Številka naloga</label>
+              <div style="display:flex;gap:8px;align-items:center">
+                <input type="text" id="dn-stevilka" class="inp-blue" style="max-width:180px">
+              </div>
+              <label class="form-label">Datum sprejema</label>
+              <input type="date" id="dn-datum-sprejem" class="inp-blue" style="max-width:180px">
+              <label class="form-label">Rok izdelave</label>
+              <input type="date" id="dn-datum-rok" class="inp-blue" style="max-width:180px">
+              <label class="form-label">Količina (kapsul)</label>
+              <input type="number" id="dn-kolicina" class="inp-blue" min="0" step="1000" style="max-width:160px">
+              <label class="form-label">Stroj</label>
+              <select id="dn-stroj" class="inp-blue" style="max-width:260px"></select>
+              <label class="form-label">Način pakiranja</label>
+              <div id="dn-pakiranje-prikaz" style="font-size:13px"></div>
+              <label class="form-label">Batch / Šarža</label>
+              <input type="text" id="dn-batch" class="inp-blue" placeholder="npr. B2025-001" style="max-width:180px">
+              <label class="form-label">Status</label>
+              <select id="dn-status" class="inp-blue" style="max-width:220px">
+                <option value="caka">⏳ V čakanju</option>
+                <option value="priprava">🔧 V pripravi</option>
+                <option value="produkcija">⚙️ V produkciji</option>
+                <option value="zakljuceno">✓ Zaključeno</option>
+                <option value="zavrnjeno">✗ Zavrnjeno</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sestavine in COA -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Sestavine in COA</span>
+            <span class="text-sm" id="dn-expiry-info" style="color:var(--warn)"></span>
+          </div>
+          <div class="card-body" style="padding:.75rem">
+            <div id="dn-sestavine-list"></div>
+          </div>
+        </div>
+
+        <!-- Načrt mešanja -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Načrt mešanja</span>
+          </div>
+          <div class="card-body">
+            <div class="form-grid" style="max-width:300px;margin-bottom:1rem">
+              <label class="form-label">Velikost bobna (kg)</label>
+              <input type="number" id="dn-boben" class="inp-blue" value="50" min="1" style="max-width:100px" onchange="renderDNMesanje()">
+            </div>
+            <div id="dn-mesanje-wrap"></div>
+          </div>
+        </div>
+
+        <!-- Rok izdelka -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">Rok uporabe izdelka</span></div>
+          <div class="card-body">
+            <div class="form-grid" style="max-width:400px">
+              <label class="form-label">Rok izdelka</label>
+              <input type="date" id="dn-rok-izdelka" class="inp-blue" style="max-width:180px">
+              <label class="form-label">Alergeni</label>
+              <div id="dn-alergeni-prikaz" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Podpisi -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">Podpisi in odobritve</span></div>
+          <div class="card-body">
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem">
+              <div>
+                <div style="font-size:11px;font-weight:500;color:var(--text3);text-transform:uppercase;margin-bottom:.5rem">Vodja produkcije</div>
+                <input type="text" id="dn-podpis-vp" placeholder="Ime in priimek" style="margin-bottom:8px">
+                <div style="height:40px;border-bottom:1px solid var(--border2);margin-top:8px"></div>
+                <div style="font-size:11px;color:var(--text3);margin-top:4px">Podpis</div>
+              </div>
+              <div>
+                <div style="font-size:11px;font-weight:500;color:var(--text3);text-transform:uppercase;margin-bottom:.5rem">QC</div>
+                <input type="text" id="dn-podpis-qc" placeholder="Ime in priimek" style="margin-bottom:8px">
+                <div style="height:40px;border-bottom:1px solid var(--border2);margin-top:8px"></div>
+                <div style="font-size:11px;color:var(--text3);margin-top:4px">Podpis</div>
+              </div>
+              <div>
+                <div style="font-size:11px;font-weight:500;color:var(--text3);text-transform:uppercase;margin-bottom:.5rem">Operater</div>
+                <input type="text" id="dn-podpis-op" placeholder="Ime in priimek" style="margin-bottom:8px">
+                <div style="height:40px;border-bottom:1px solid var(--border2);margin-top:8px"></div>
+                <div style="font-size:11px;color:var(--text3);margin-top:4px">Podpis</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- ZALOGA -->
       <div id="panel-zaloga" class="panel">
         <div class="flex-between">
@@ -623,8 +740,8 @@ tr:hover td{background:var(--surface2)}
 
 <script>
 // ── CONFIG — zamenjajte z vašimi Supabase kredenciali ──────
-const SUPABASE_URL = 'https://unsolrdpbcvpcjtmoswp.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVuc29scmRwYmN2cGNqdG1vc3dwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYzNjcyNzUsImV4cCI6MjA5MTk0MzI3NX0.WsTn981EfcQCeeapUp7kCp6IMm4J2c7xGmjAnC9wOjI';
+const SUPABASE_URL = 'https://YOUR_PROJECT.supabase.co';
+const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
 // ────────────────────────────────────────────────────────────
 
 const { createClient } = supabase;
@@ -1284,8 +1401,240 @@ async function novNalog(){
   await loadNalogi();showPanel('nalogi');
 }
 
-function openNalog(id){
-  notif('Nalog odprt (v razvoju)');
+let aktivniNalog = null;
+let dnSestavine = [];
+
+async function openNalog(id){
+  const{data,error}=await sb.from('delovni_nalogi')
+    .select('*,stranke(podjetje,naslov,drzava,davcna,rok_placila)')
+    .eq('id',id).single();
+  if(error||!data){notif('Napaka pri nalaganju naloga');return;}
+
+  aktivniNalog = data;
+  dnSestavine = data.sestavine_coa||[];
+
+  // Nastavi header
+  document.getElementById('dn-page-title').textContent = data.naziv;
+  document.getElementById('dn-page-sub').textContent = data.stevilka;
+
+  // Osnovna polja
+  const g = id => document.getElementById(id);
+  if(g('dn-naziv'))g('dn-naziv').value = data.naziv||'';
+  if(g('dn-stevilka'))g('dn-stevilka').value = data.stevilka||'';
+  if(g('dn-datum-sprejem'))g('dn-datum-sprejem').value = data.datum_sprejem||'';
+  if(g('dn-datum-rok'))g('dn-datum-rok').value = data.datum_rok||'';
+  if(g('dn-kolicina'))g('dn-kolicina').value = data.kolicina||0;
+  if(g('dn-batch'))g('dn-batch').value = data.batch||'';
+  if(g('dn-status'))g('dn-status').value = data.status||'caka';
+  if(g('dn-rok-izdelka'))g('dn-rok-izdelka').value = data.rok_izdelka||'';
+  if(g('dn-boben'))g('dn-boben').value = data.mesanje?.boben||50;
+  if(g('dn-podpis-vp'))g('dn-podpis-vp').value = data.podpisi?.vp||'';
+  if(g('dn-podpis-qc'))g('dn-podpis-qc').value = data.podpisi?.qc||'';
+  if(g('dn-podpis-op'))g('dn-podpis-op').value = data.podpisi?.op||'';
+
+  // Stranka
+  const strankaEl = g('dn-stranka-prikaz');
+  if(strankaEl && data.stranke){
+    const s = data.stranke;
+    strankaEl.innerHTML = `<span style="font-weight:500">${s.podjetje}</span>`+
+      (s.davcna?` <span class="text-sm">— DIŠ: ${s.davcna}</span>`:'')+
+      (s.naslov?`<br><span class="text-sm">${s.naslov}${s.drzava?', '+s.drzava:''}</span>`:'');
+  }
+
+  // Pakiranje
+  const pakEl = g('dn-pakiranje-prikaz');
+  if(pakEl){
+    const pak = data.pakiranje||'bulk';
+    const pakLabel = pak==='bulk'?'Bulk':pak==='blistiranje'?'Blistiranje':'Pakiranje v lončke';
+    pakEl.innerHTML = `<span class="badge badge-gray">${pakLabel}</span>`;
+  }
+
+  // Stroji dropdown
+  const dnStroj = g('dn-stroj');
+  if(dnStroj){
+    dnStroj.innerHTML = strojData.map((s,i)=>`<option value="${s.id}"${data.stroj_id===s.id?' selected':''}>${s.ime} — ${s.tip}</option>`).join('');
+  }
+
+  // Alergeni
+  renderDNAlergeni(data.alergeni||[]);
+
+  // Sestavine
+  renderDNSestavine();
+  renderDNMesanje();
+
+  showPanel('nalog-detail');
+}
+
+function renderDNSestavine(){
+  const el = document.getElementById('dn-sestavine-list');if(!el)return;
+  if(!dnSestavine.length){
+    el.innerHTML='<div class="empty" style="padding:1rem">Ni sestavin — potegne se iz formule ob ustvaritvi naloga.</div>';
+    return;
+  }
+  el.innerHTML = dnSestavine.map((s,i)=>`
+    <div style="border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:.875rem;overflow:hidden">
+      <div style="background:var(--surface2);padding:.75rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <div style="font-weight:500;font-size:14px">${s.ime||s.sestavina_id||'?'}</div>
+        <div class="flex-gap">
+          ${s.mg?`<span class="badge badge-gray">${(+s.mg).toFixed(2)} mg/kapsulo</span>`:''}
+          ${s.kg?`<span class="badge badge-blue">${(+s.kg).toFixed(4)} kg / serijo</span>`:''}
+          ${s.coa_done?'<span class="badge badge-green">✓ COA prebran</span>':
+            s.coa_status==='loading'?'<span class="badge badge-warn">⟳ Berem…</span>':
+            '<span class="badge badge-gray">COA manjka</span>'}
+        </div>
+      </div>
+      <div style="padding:1rem 1.25rem">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+          <div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em">LOT / Batch številka</div>
+            <input type="text" value="${s.lot||''}" placeholder="Potegne se iz COA ali vnesite ročno"
+              onchange="dnSestavine[${i}].lot=this.value"
+              style="font-family:var(--mono);font-size:13px;padding:8px 10px;height:auto">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em">Expiry / Retest date</div>
+            <input type="date" value="${s.expiry||''}"
+              onchange="dnSestavine[${i}].expiry=this.value;updateDNRok()"
+              style="font-size:13px;padding:8px 10px;height:auto">
+          </div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em">COA dokument</div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <label class="btn" style="cursor:pointer;padding:7px 16px">
+              ${s.coa_filename?'↺ Zamenjaj COA':'↑ Naloži COA (PDF)'}
+              <input type="file" accept=".pdf" style="display:none" onchange="processDNCOA(this,${i})">
+            </label>
+            ${s.coa_filename?`<span style="font-size:12px;color:var(--info);font-family:var(--mono)">${s.coa_filename}</span>`:'<span class="text-sm">Ni naložen</span>'}
+          </div>
+        </div>
+      </div>
+      ${s.alergeni&&s.alergeni.length>0?`
+      <div style="padding:.75rem 1.25rem;border-top:1px solid var(--border);background:var(--surface2)">
+        <div style="font-size:11px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em">Alergeni iz COA</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          ${s.alergeni.map(a=>`<span class="badge badge-warn" style="font-size:11px">${a}</span>`).join('')}
+        </div>
+      </div>`:''}
+    </div>`).join('');
+  updateDNRok();
+}
+
+function renderDNMesanje(){
+  const el = document.getElementById('dn-mesanje-wrap');if(!el)return;
+  const boben = +document.getElementById('dn-boben')?.value||50;
+  const kol = aktivniNalog?.kolicina||0;
+  const odpad = (aktivniNalog?.odpad_pct||3)/100;
+  const kolOb = Math.ceil(kol*(1+odpad));
+
+  let skupajKg = 0;
+  dnSestavine.forEach(s=>{
+    if(s.kg)skupajKg += +s.kg;
+  });
+  if(skupajKg===0 && dnSestavine.length){
+    skupajKg = kolOb * 0.001; // fallback
+  }
+
+  const cikli = skupajKg>0 ? Math.ceil(skupajKg/boben) : 1;
+  const kgNaCikel = skupajKg>0 ? skupajKg/cikli : 0;
+
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1rem">
+      <div class="metric"><div class="metric-label">Skupaj masa</div><div class="metric-val">${skupajKg.toFixed(2)} kg</div></div>
+      <div class="metric"><div class="metric-label">Velikost bobna</div><div class="metric-val">${boben} kg</div></div>
+      <div class="metric"><div class="metric-label">Ciklov mešanja</div><div class="metric-val green">${cikli}×</div></div>
+      <div class="metric"><div class="metric-label">kg / cikel</div><div class="metric-val">${kgNaCikel.toFixed(2)} kg</div></div>
+    </div>
+    ${dnSestavine.length?`
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>Sestavina</th><th class="td-right">Skupaj (kg)</th>${Array.from({length:cikli},(_,i)=>`<th class="td-right">Cikel ${i+1} (kg)</th>`).join('')}</tr></thead>
+      <tbody>${dnSestavine.map(s=>{
+        const kg = +s.kg||0;
+        const kgC = cikli>0?kg/cikli:0;
+        return`<tr>
+          <td style="font-weight:500">${s.ime||'?'}</td>
+          <td class="td-mono">${kg.toFixed(4)}</td>
+          ${Array.from({length:cikli},()=>`<td class="td-mono">${kgC.toFixed(4)}</td>`).join('')}
+        </tr>`;
+      }).join('')}</tbody>
+    </table></div>`:'<div class="text-sm">Ni sestavin za prikaz mešanja.</div>'}`;
+}
+
+function updateDNRok(){
+  const expEl = document.getElementById('dn-expiry-info');
+  const rokEl = document.getElementById('dn-rok-izdelka');
+  const expiries = dnSestavine.filter(s=>s.expiry).map(s=>s.expiry).sort();
+  if(expiries.length){
+    const najKrajsi = expiries[0];
+    if(rokEl && !rokEl.value) rokEl.value = najKrajsi;
+    if(expEl) expEl.textContent = `Najkrajši expiry: ${najKrajsi}`;
+  }
+  // Alergeni
+  const vsiAlergeni = [...new Set(dnSestavine.flatMap(s=>s.alergeni||[]))];
+  renderDNAlergeni(vsiAlergeni);
+}
+
+function renderDNAlergeni(alergeni){
+  const el = document.getElementById('dn-alergeni-prikaz');if(!el)return;
+  if(!alergeni.length){el.innerHTML='<span class="text-sm">Ni identificiranih alergenov</span>';return;}
+  el.innerHTML = alergeni.map(a=>`<span class="badge badge-warn">${a}</span>`).join('');
+}
+
+async function processDNCOA(input, idx){
+  const file = input.files[0];if(!file)return;
+  dnSestavine[idx].coa_filename = file.name;
+  dnSestavine[idx].coa_status = 'loading';
+  renderDNSestavine();
+  try{
+    const base64 = await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file);});
+    const prompt=`Iz COA dokumenta izlusci in vrni SAMO JSON:
+{"lot":"","expiry":"YYYY-MM-DD","alergeni":[]}
+Alergeni iz 14 EU alergenov: Gluten,Raki,Jajca,Ribe,Arasidi,Soja,Mleko,Oreski,Zelena,Gorcica,Sezam,Zveplov dioksid,Lupina,Blitva.
+Vrni SAMO JSON.`;
+    const resp = await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:400,messages:[{role:'user',content:[{type:'document',source:{type:'base64',media_type:'application/pdf',data:base64}},{type:'text',text:prompt}]}]})});
+    const data = await resp.json();
+    const parsed = JSON.parse((data.content?.map(c=>c.text||'').join('')||'').replace(/```json|```/g,'').trim());
+    if(parsed.lot)dnSestavine[idx].lot=parsed.lot;
+    if(parsed.expiry)dnSestavine[idx].expiry=parsed.expiry;
+    if(parsed.alergeni)dnSestavine[idx].alergeni=parsed.alergeni;
+    dnSestavine[idx].coa_done=true;
+    dnSestavine[idx].coa_status='done';
+    renderDNSestavine();
+    notif('✓ COA prebran');
+  }catch(err){
+    dnSestavine[idx].coa_status='error';
+    renderDNSestavine();
+    notif('⚠ COA napaka: '+err.message,3500);
+  }
+  input.value='';
+}
+
+async function shraniNalog(){
+  if(!aktivniNalog)return;
+  const g = id => document.getElementById(id);
+  const obj = {
+    naziv: g('dn-naziv')?.value||aktivniNalog.naziv,
+    datum_sprejem: g('dn-datum-sprejem')?.value||null,
+    datum_rok: g('dn-datum-rok')?.value||null,
+    kolicina: +g('dn-kolicina')?.value||0,
+    stroj_id: g('dn-stroj')?.value||null,
+    batch: g('dn-batch')?.value||'',
+    status: g('dn-status')?.value||'caka',
+    rok_izdelka: g('dn-rok-izdelka')?.value||null,
+    sestavine_coa: dnSestavine,
+    alergeni: [...new Set(dnSestavine.flatMap(s=>s.alergeni||[]))],
+    podpisi: {
+      vp: g('dn-podpis-vp')?.value||'',
+      qc: g('dn-podpis-qc')?.value||'',
+      op: g('dn-podpis-op')?.value||'',
+    },
+    mesanje: { boben: +g('dn-boben')?.value||50 },
+    updated_at: new Date().toISOString(),
+  };
+  const{error}=await sb.from('delovni_nalogi').update(obj).eq('id',aktivniNalog.id);
+  if(error){notif('⚠ Napaka: '+error.message,3500);return;}
+  aktivniNalog={...aktivniNalog,...obj};
+  notif('✓ Nalog shranjen');
 }
 
 // ── ZALOGA ─────────────────────────────────────────────────
