@@ -541,25 +541,60 @@ tr:hover td{background:var(--surface2)}
       <!-- FORMULA -->
       <div id="panel-formula" class="panel">
         <div class="flex-between">
-          <div><div class="page-title">Formula izdelka</div><div class="page-sub">Sestavine iz cenika — cena se potegne avtomatsko</div></div>
+          <div><div class="page-title">Formula izdelka</div><div class="page-sub">Sestavine iz cenika — cena se potegne avtomatsko glede na količino v seriji</div></div>
           <div class="flex-gap">
             <button class="btn btn-sm" onclick="shraniFormulo()">💾 Shrani formulo</button>
             <button class="btn btn-sm btn-primary" onclick="addFormulaRow()">+ Dodaj sestavino</button>
           </div>
         </div>
+
+        <!-- Povzetek formule -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">Povzetek formule</span></div>
+          <div class="card-body">
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem" id="formula-summary">
+              <div class="metric"><div class="metric-label">Skupna teža kapsule</div><div class="metric-val" id="fs-skupaj-mg">— mg</div></div>
+              <div class="metric"><div class="metric-label">Teža brez lupine</div><div class="metric-val" id="fs-vsebina-mg">— mg</div></div>
+              <div class="metric"><div class="metric-label">Število sestavin</div><div class="metric-val" id="fs-stevilo">0</div></div>
+              <div class="metric"><div class="metric-label">Est. cena/kapsulo</div><div class="metric-val green" id="fs-cena-kos">— €</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabela formule -->
         <div class="card">
           <div class="card-body" style="padding:.75rem">
             <div class="tbl-wrap">
             <table>
               <thead><tr>
-                <th style="min-width:200px">Sestavina</th><th style="min-width:65px">Del</th>
-                <th style="min-width:100px">Kol./kapsulo</th><th style="min-width:60px">Enota</th>
-                <th style="min-width:75px">Izguba (%)</th><th style="min-width:95px">Min. obr. (kg)</th>
-                <th style="min-width:130px">Dobavitelj</th><th style="min-width:140px">Razpon cen</th>
+                <th style="min-width:200px">Sestavina</th>
+                <th style="min-width:65px">Del</th>
+                <th style="min-width:110px">Kol./kapsulo</th>
+                <th style="min-width:60px">Enota</th>
+                <th style="min-width:75px">Izguba (%)</th>
+                <th style="min-width:95px">Min. obr. (kg)</th>
+                <th style="min-width:110px">Neto mg</th>
+                <th style="min-width:130px">Dobavitelj</th>
+                <th style="min-width:160px">Cene iz cenika (€/kg)</th>
                 <th style="width:36px"></th>
               </tr></thead>
               <tbody id="formula-body"></tbody>
             </table>
+            </div>
+            <!-- Skupaj -->
+            <div style="display:flex;justify-content:flex-end;gap:2rem;padding:.75rem 1rem;border-top:2px solid var(--border);margin-top:.5rem">
+              <div style="text-align:right">
+                <div class="text-sm">Skupaj vsebina (brez lupine)</div>
+                <div style="font-family:var(--mono);font-weight:500;font-size:15px" id="formula-skupaj-mg">— mg</div>
+              </div>
+              <div style="text-align:right">
+                <div class="text-sm">+ Lupina kapsule (est.)</div>
+                <div style="font-family:var(--mono);font-size:13px;color:var(--text2)" id="formula-lupina-mg">— mg</div>
+              </div>
+              <div style="text-align:right">
+                <div class="text-sm" style="font-weight:500">Skupna teža kapsule</div>
+                <div style="font-family:var(--mono);font-weight:700;font-size:18px;color:var(--accent-text)" id="formula-skupaj-total">— mg</div>
+              </div>
             </div>
           </div>
         </div>
@@ -1261,39 +1296,104 @@ function getStrojCena(stroj,kol){
 }
 
 // ── FORMULA ────────────────────────────────────────────────
+
+// Teža lupine po velikosti kapsule (mg) — standardne vrednosti
+const LUPINA_TEZA = {'00':163,'0':122,'1':96,'2':75,'3':61,'4':48};
+
 function renderFormula(){
   const body=document.getElementById('formula-body');if(!body)return;
+
   body.innerHTML=formulaData.map((f,i)=>{
     const c=(cenikSestavineData||[]).find(x=>x.id===f.sestavina_id);
-    const minC=c?Math.min(...Object.values(Object.fromEntries(TIER_COLS.map(k=>[k,c[k]||0]))).filter(x=>x>0)):0;
-    const maxC=c?Math.max(...Object.values(Object.fromEntries(TIER_COLS.map(k=>[k,c[k]||0]))).filter(x=>x>0)):0;
+    // Cene iz cenika
+    const cene = c ? TIER_COLS.map((col,ti)=>({kg:TIER_KG[ti],cena:c[col]})).filter(x=>x.cena) : [];
+    const minC = cene.length ? Math.min(...cene.map(x=>x.cena)) : 0;
+    const maxC = cene.length ? Math.max(...cene.map(x=>x.cena)) : 0;
+    // Neto mg (z izgubo)
+    const netoMg = f.kol * (1 + (f.izguba||0)/100);
+
     return`<tr>
-      <td><select onchange="formulaData[${i}].sestavina_id=this.value" style="min-width:180px">
-        <option value="">— Izberi —</option>
-        ${(cenikSestavineData||[]).map(cs=>`<option value="${cs.id}"${f.sestavina_id===cs.id?' selected':''}>${cs.ime}</option>`).join('')}
-      </select></td>
-      <td><select onchange="formulaData[${i}].del=this.value" style="max-width:65px">
-        <option value=""${!f.del?' selected':''}>—</option>
-        <option value="A"${f.del==='A'?' selected':''}>A</option>
-        <option value="B"${f.del==='B'?' selected':''}>B</option>
-      </select></td>
-      <td><input type="number" value="${f.kol}" class="inp-blue" onchange="formulaData[${i}].kol=+this.value" min="0" step="0.001"></td>
-      <td><select onchange="formulaData[${i}].enota=this.value" style="max-width:65px">
-        <option${f.enota==='mg'?' selected':''}>mg</option>
-        <option${f.enota==='ml'?' selected':''}>ml</option>
-      </select></td>
-      <td><input type="number" value="${f.izguba||0}" onchange="formulaData[${i}].izguba=+this.value" min="0" step="0.1"></td>
+      <td>
+        <select onchange="formulaData[${i}].sestavina_id=this.value;renderFormula()" style="min-width:190px">
+          <option value="">— Izberi sestavino —</option>
+          ${(cenikSestavineData||[]).map(cs=>`<option value="${cs.id}"${f.sestavina_id===cs.id?' selected':''}>${cs.ime}</option>`).join('')}
+        </select>
+      </td>
+      <td>
+        <select onchange="formulaData[${i}].del=this.value" style="max-width:65px">
+          <option value=""${!f.del?' selected':''}>—</option>
+          <option value="A"${f.del==='A'?' selected':''}>A</option>
+          <option value="B"${f.del==='B'?' selected':''}>B</option>
+        </select>
+      </td>
+      <td><input type="number" value="${f.kol}" class="inp-blue" onchange="formulaData[${i}].kol=+this.value;renderFormula()" min="0" step="0.001"></td>
+      <td>
+        <select onchange="formulaData[${i}].enota=this.value;renderFormula()" style="max-width:65px">
+          <option${(f.enota||'mg')==='mg'?' selected':''}>mg</option>
+          <option${f.enota==='ml'?' selected':''}>ml</option>
+        </select>
+      </td>
+      <td><input type="number" value="${f.izguba||0}" onchange="formulaData[${i}].izguba=+this.value;renderFormula()" min="0" step="0.1" style="max-width:70px"></td>
       <td><input type="number" value="${f.min_ob||0}" onchange="formulaData[${i}].min_ob=+this.value" min="0" step="0.1" placeholder="0"></td>
-      <td>${c?`<span class="badge badge-blue" style="font-size:10px">${c.dobavitelj||'—'}</span>`:'—'}</td>
-      <td>${c&&maxC>0?`<span class="badge badge-gray" style="font-size:10px">${f2(maxC)}→${f2(minC)} €/${c.enota||'kg'}</span>`:'—'}</td>
+      <td class="td-mono" style="font-size:12px;font-weight:500;color:var(--accent-text)">${netoMg.toFixed(2)} mg</td>
+      <td>${c&&c.dobavitelj?`<span class="badge badge-blue" style="font-size:10px">${c.dobavitelj}</span>`:'<span class="text-sm">—</span>'}</td>
+      <td>
+        ${cene.length>0?`
+        <div style="font-size:10px;line-height:1.6">
+          ${cene.map(x=>`<span style="display:inline-block;margin-right:6px;white-space:nowrap">
+            <span style="color:var(--text3)">${x.kg}kg:</span>
+            <span style="font-family:var(--mono);font-weight:500;color:${x.cena===minC?'var(--accent-text)':x.cena===maxC?'var(--text2)':'var(--text)'}">${f2(x.cena)} €</span>
+          </span>`).join('')}
+        </div>`:'<span class="text-sm">—</span>'}
+      </td>
       <td><button class="btn btn-del" onclick="formulaData.splice(${i},1);renderFormula()">✕</button></td>
     </tr>`;
   }).join('');
+
+  // Posodobi povzetek
+  updateFormulaSummary();
 }
+
+function updateFormulaSummary(){
+  // Skupaj mg vsebine
+  const skupajMg = formulaData.reduce((s,f)=>{
+    const mg = f.enota==='ml' ? (f.kol||0)*1000 : (f.kol||0);
+    return s + mg;
+  }, 0);
+
+  // Lupina — potegni iz izbrane kapsule
+  const kapsId = document.getElementById('i-kaps-select')?.value;
+  const kaps = kapsId ? (cenikKapsulData||[]).find(k=>k.id===kapsId) : null;
+  const lupinaKg = kaps?.velikost ? LUPINA_TEZA[kaps.velikost]||100 : 100;
+  const skupajTotal = skupajMg + lupinaKg;
+
+  // Ocena cene/kapsulo iz cenika (100kg razred)
+  let estCena = 0;
+  formulaData.forEach(f=>{
+    const c=(cenikSestavineData||[]).find(x=>x.id===f.sestavina_id);
+    if(!c)return;
+    const kol_mg = (f.kol||0)*(1+(f.izguba||0)/100);
+    const kg_na_kos = kol_mg/1e6;
+    const cena = getCenikCena(c, 100); // 100kg razred kot ocena
+    estCena += kg_na_kos * cena;
+  });
+
+  // Posodobi UI
+  const set=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val;};
+  set('fs-skupaj-mg', skupajTotal.toFixed(1)+' mg');
+  set('fs-vsebina-mg', skupajMg.toFixed(1)+' mg');
+  set('fs-stevilo', formulaData.filter(f=>f.sestavina_id).length);
+  set('fs-cena-kos', estCena>0 ? f4(estCena)+' €' : '— €');
+  set('formula-skupaj-mg', skupajMg.toFixed(1)+' mg');
+  set('formula-lupina-mg', '+ '+lupinaKg+' mg');
+  set('formula-skupaj-total', skupajTotal.toFixed(1)+' mg');
+}
+
 function addFormulaRow(){
   formulaData.push({sestavina_id:'',del:'',kol:100,enota:'mg',izguba:0,min_ob:0});
   renderFormula();
 }
+
 async function shraniFormulo(){
   const naziv=document.getElementById('i-naziv')?.value||'Formula '+(new Date().toLocaleDateString('sl-SI'));
   await sb.from('formule').insert({naziv,sestavine:formulaData,tip_kapsulacije:document.getElementById('i-tip')?.value||'LIQUID'});
