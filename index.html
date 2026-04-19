@@ -2089,18 +2089,25 @@ Iz tega PDF računa izlušči NATANČNO vse podatke in vrni SAMO JSON:
     {
       "naziv_na_racunu": "točen naziv kot piše na računu",
       "lot": "LOT ali Batch številka če je na računu",
-      "kolicina": numerična vrednost,
+      "kolicina": številka (POZOR: evropski format - vejica je decimalno ločilo, ne tisočica. 20,000 = 20.0 kg, 1.234,56 = 1234.56),
       "enota": "kg ali L ali kos",
-      "cena_na_enoto": numerična vrednost (cena na kg/L/kos),
-      "skupaj": numerična vrednost skupaj za ta artikel,
+      "cena_na_enoto": številka v EUR (cena na kg/L/kos, evropski decimalni format),
+      "skupaj": številka v EUR (kolicina × cena_na_enoto, preverite da se ujema),
       "opomba": "kakršnakoli dodatna info"
     }
   ],
-  "skupaj_brez_ddv": numerična vrednost,
-  "ddv": numerična vrednost ali null,
-  "skupaj_z_ddv": numerična vrednost
+  "skupaj_brez_ddv": številka,
+  "ddv": številka ali null,
+  "skupaj_z_ddv": številka
 }
-Vrni SAMO JSON brez razlage. Vse cene v EUR.`;
+
+POMEMBNO za številke:
+- Evropski format: vejica (,) = decimalno ločilo, pika (.) = tisočica
+- Primer: "20,000 kg" = 20 kg (NE 20000 kg)
+- Primer: "1.234,56 EUR" = 1234.56 EUR
+- Preverite: kolicina × cena_na_enoto mora biti enako skupaj (±1%)
+
+Vrni SAMO JSON brez razlage. Vse cene pretvori v EUR.`;
 
     const resp=await fetch('/api/claude',{
       method:'POST',headers:{'Content-Type':'application/json'},
@@ -2113,6 +2120,25 @@ Vrni SAMO JSON brez razlage. Vse cene v EUR.`;
     });
     const data=await resp.json();
     const parsed=JSON.parse((data.content?.map(c=>c.text||'').join('')||'').replace(/```json|```/g,'').trim());
+
+    // Validacija in popravek
+    parsed.artikli = (parsed.artikli||[]).map(a => {
+      const kol = +a.kolicina || 0;
+      const cena = +a.cena_na_enoto || 0;
+      const skupaj = +a.skupaj || 0;
+      let _neujemanje = null;
+      // Preveri ujemanje
+      if(kol>0 && cena>0 && skupaj>0){
+        const izracunan = kol*cena;
+        const odstopanje = Math.abs(izracunan-skupaj)/skupaj;
+        if(odstopanje>0.02) _neujemanje={izracunan:izracunan.toFixed(2),prebran:skupaj.toFixed(2),odstopanje:(odstopanje*100).toFixed(1)};
+      }
+      // Izracunaj manjkajoca polja
+      if(skupaj>0 && cena>0 && kol===0) a.kolicina = skupaj/cena;
+      if(skupaj>0 && kol>0 && cena===0) a.cena_na_enoto = skupaj/kol;
+      if(kol>0 && cena>0 && skupaj===0) a.skupaj = kol*cena;
+      return {...a, _neujemanje};
+    });
 
     // Potegni podatke v polja
     const g=id=>document.getElementById(id);
@@ -2166,6 +2192,7 @@ function renderPrvArtikli(){
           <div>
             <input type="text" value="${a.naziv_na_racunu}" onchange="novaPrv.artikli[${i}].naziv_na_racunu=this.value"
               style="font-weight:600;font-size:13px;border:none;background:transparent;padding:0;width:280px">
+            ${a._neujemanje?`<div style="font-size:11px;color:var(--danger);margin-top:2px">⚠ Neujemanje: izracunano ${a._neujemanje.izracunan} € ≠ ${a._neujemanje.prebran} € (${a._neujemanje.odstopanje}% razlika) — preverite ročno</div>`:''}
           </div>
         </div>
         <div class="flex-gap">
