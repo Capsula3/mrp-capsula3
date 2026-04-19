@@ -1925,7 +1925,7 @@ async function processDNCOA(input, idx){
 {"lot":"","expiry":"YYYY-MM-DD","alergeni":[]}
 Alergeni iz 14 EU alergenov: Gluten,Raki,Jajca,Ribe,Arasidi,Soja,Mleko,Oreski,Zelena,Gorcica,Sezam,Zveplov dioksid,Lupina,Blitva.
 Vrni SAMO JSON.`;
-    const resp = await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:400,messages:[{role:'user',content:[{type:'document',source:{type:'base64',media_type:'application/pdf',data:base64}},{type:'text',text:prompt}]}]})});
+    const resp = await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:400,messages:[{role:'user',content:[{type:'document',source:{type:'base64',media_type:'application/pdf',data:base64}},{type:'text',text:prompt}]}]})});
     const data = await resp.json();
     const parsed = JSON.parse((data.content?.map(c=>c.text||'').join('')||'').replace(/```json|```/g,'').trim());
     if(parsed.lot)dnSestavine[idx].lot=parsed.lot;
@@ -2103,7 +2103,7 @@ Vrni SAMO JSON brez razlage. Vse cene v EUR.`;
 
     const resp=await fetch('/api/claude',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,
+      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:2000,
         messages:[{role:'user',content:[
           {type:'document',source:{type:'base64',media_type:'application/pdf',data:base64}},
           {type:'text',text:prompt}
@@ -2275,7 +2275,7 @@ Vrni SAMO JSON.`;
 
     const resp=await fetch('/api/claude',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:500,
+      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:500,
         messages:[{role:'user',content:[
           {type:'document',source:{type:'base64',media_type:'application/pdf',data:base64}},
           {type:'text',text:prompt}
@@ -3086,7 +3086,7 @@ Vrni SAMO JSON. Če je enota v %, pretvori v mg glede na skupno težo če je zna
     if(isPdf){
       response = await fetch('/api/claude',{
         method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,
+        body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:2000,
           messages:[{role:'user',content:[
             {type:'document',source:{type:'base64',media_type:'application/pdf',data:base64}},
             {type:'text',text:prompt}
@@ -3102,14 +3102,14 @@ Vrni SAMO JSON. Če je enota v %, pretvori v mg glede na skupno težo če je zna
       vsebina = JSON.stringify(jsonData);
       response = await fetch('/api/claude',{
         method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,
+        body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:2000,
           messages:[{role:'user',content:`${prompt}\n\nPodatki iz Excel datoteke:\n${vsebina}`}]
         })
       });
     } else {
       response = await fetch('/api/claude',{
         method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,
+        body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:2000,
           messages:[{role:'user',content:`${prompt}\n\nVsebina dokumenta:\n${vsebina}`}]
         })
       });
