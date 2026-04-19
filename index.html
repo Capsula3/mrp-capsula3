@@ -3537,6 +3537,18 @@ async function deleteFormulacija(stevilka, naziv){
   await loadFormulacije();
 }
 
+// ── HELPERS ───────────────────────────────────────
+
+function matchScore(a, b){
+  if(!a||!b)return 0;
+  const al=a.toLowerCase(), bl=b.toLowerCase();
+  if(al===bl)return 1;
+  if(al.includes(bl)||bl.includes(al))return 0.8;
+  const aw=al.split(/\s+/), bw=bl.split(/\s+/);
+  const skupne=aw.filter(w=>w.length>3&&bw.some(bww=>bww.includes(w)||w.includes(bww)));
+  return skupne.length/Math.max(aw.length,bw.length);
+}
+
 // ── INIT ──────────────────────────────────────────
 renderKolRows();
 initAuth();
