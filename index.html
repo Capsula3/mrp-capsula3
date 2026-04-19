@@ -1925,7 +1925,7 @@ async function processDNCOA(input, idx){
 {"lot":"","expiry":"YYYY-MM-DD","alergeni":[]}
 Alergeni iz 14 EU alergenov: Gluten,Raki,Jajca,Ribe,Arasidi,Soja,Mleko,Oreski,Zelena,Gorcica,Sezam,Zveplov dioksid,Lupina,Blitva.
 Vrni SAMO JSON.`;
-    const resp = await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:400,messages:[{role:'user',content:[{type:'document',source:{type:'base64',media_type:'application/pdf',data:base64}},{type:'text',text:prompt}]}]})});
+    const resp = await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:400,messages:[{role:'user',content:[{type:'document',source:{type:'base64',media_type:'application/pdf',data:base64}},{type:'text',text:prompt}]}]})});
     const data = await resp.json();
     const parsed = JSON.parse((data.content?.map(c=>c.text||'').join('')||'').replace(/```json|```/g,'').trim());
     if(parsed.lot)dnSestavine[idx].lot=parsed.lot;
@@ -2101,7 +2101,7 @@ Iz tega PDF računa izlušči NATANČNO vse podatke in vrni SAMO JSON:
 }
 Vrni SAMO JSON brez razlage. Vse cene v EUR.`;
 
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+    const resp=await fetch('/api/claude',{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,
         messages:[{role:'user',content:[
@@ -2273,7 +2273,7 @@ async function beriCOAPrv(input,idx){
 14 EU alergenov: Gluten, Raki, Jajca, Ribe, Arašidi, Soja, Mleko, Oreščki, Zelena, Gorčica, Sezam, Žveplov dioksid, Lupina, Blitva.
 Vrni SAMO JSON.`;
 
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+    const resp=await fetch('/api/claude',{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:500,
         messages:[{role:'user',content:[
@@ -3084,7 +3084,7 @@ Vrni SAMO JSON. Če je enota v %, pretvori v mg glede na skupno težo če je zna
 
     let response;
     if(isPdf){
-      response = await fetch('https://api.anthropic.com/v1/messages',{
+      response = await fetch('/api/claude',{
         method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,
           messages:[{role:'user',content:[
@@ -3100,14 +3100,14 @@ Vrni SAMO JSON. Če je enota v %, pretvori v mg glede na skupno težo če je zna
       const ws = wb.Sheets[wb.SheetNames[0]];
       const jsonData = XLSX.utils.sheet_to_json(ws,{defval:''});
       vsebina = JSON.stringify(jsonData);
-      response = await fetch('https://api.anthropic.com/v1/messages',{
+      response = await fetch('/api/claude',{
         method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,
           messages:[{role:'user',content:`${prompt}\n\nPodatki iz Excel datoteke:\n${vsebina}`}]
         })
       });
     } else {
-      response = await fetch('https://api.anthropic.com/v1/messages',{
+      response = await fetch('/api/claude',{
         method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,
           messages:[{role:'user',content:`${prompt}\n\nVsebina dokumenta:\n${vsebina}`}]
