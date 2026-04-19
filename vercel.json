@@ -1,7 +1,8 @@
 {
   "functions": {
     "api/claude.js": {
-      "runtime": "edge"
+      "memory": 128,
+      "maxDuration": 30
     }
   }
 }
