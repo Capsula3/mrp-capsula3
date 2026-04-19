@@ -2029,6 +2029,7 @@ async function loadPrevzemnice(){
         </div>
         <div class="flex-gap">
           <span class="badge ${p.status==='potrjena'?'badge-green':'badge-warn'}">${p.status==='potrjena'?'✓ Potrjena':'Osnutek'}</span>
+          <button class="btn btn-sm" onclick="urediPrevzemnico('${p.id}')">✎ Uredi</button>
           <button class="btn btn-del" onclick="deletePrevzemnica('${p.id}','${p.stevilka}')">✕</button>
         </div>
       </div>
@@ -2163,23 +2164,54 @@ function renderPrvArtikli(){
         <div style="display:flex;align-items:center;gap:10px">
           <div style="width:28px;height:28px;border-radius:50%;background:${a.coa_done?'var(--accent)':'var(--border2)'};display:flex;align-items:center;justify-content:center;color:${a.coa_done?'white':'var(--text3)'};font-size:13px;font-weight:600;flex-shrink:0">${i+1}</div>
           <div>
-            <div style="font-weight:600;font-size:13px">${a.naziv_na_racunu}</div>
-            <div style="font-size:11px;color:var(--text3);margin-top:1px">
-              ${f4(a.kolicina)} ${a.enota} · ${a.cena_na_enoto?f2(a.cena_na_enoto)+' €/'+a.enota:' cena ni znana'} · skupaj: ${a.skupaj?f2(a.skupaj)+' €':'—'}
-              ${a.lot?` · <span style="font-family:var(--mono)">LOT: ${a.lot}</span>`:''}
-            </div>
+            <input type="text" value="${a.naziv_na_racunu}" onchange="novaPrv.artikli[${i}].naziv_na_racunu=this.value"
+              style="font-weight:600;font-size:13px;border:none;background:transparent;padding:0;width:280px">
           </div>
         </div>
         <div class="flex-gap">
           ${a.coa_done?'<span class="badge badge-green">✓ COA prebran</span>':
             a.coa_status==='loading'?'<span class="badge badge-warn">⟳ Berem COA…</span>':
             '<span class="badge badge-gray">COA manjka</span>'}
+          <button class="btn btn-del" onclick="novaPrv.artikli.splice(${i},1);renderPrvArtikli()" title="Odstrani artikel">✕</button>
+        </div>
+      </div>
+
+      <!-- Količina in cena — ročno urejanje -->
+      <div style="padding:.75rem 1.25rem;background:var(--surface);border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.75rem">
+        <div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em">Količina</div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <input type="number" value="${a.kolicina||''}" min="0" step="0.001" class="inp-blue"
+              onchange="novaPrv.artikli[${i}].kolicina=+this.value;novaPrv.artikli[${i}].skupaj=(+this.value)*(novaPrv.artikli[${i}].cena_na_enoto||0);posodobiPrvPovzetek()"
+              style="max-width:100px;font-family:var(--mono)">
+            <select onchange="novaPrv.artikli[${i}].enota=this.value" style="font-size:12px;max-width:65px">
+              ${['kg','l','kos'].map(e=>`<option${(a.enota||'kg')===e?' selected':''}>${e}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em">Cena / ${a.enota||'kg'} (€)</div>
+          <input type="number" value="${a.cena_na_enoto||''}" min="0" step="0.001" class="inp-blue"
+            onchange="novaPrv.artikli[${i}].cena_na_enoto=+this.value;novaPrv.artikli[${i}].skupaj=(novaPrv.artikli[${i}].kolicina||0)*(+this.value);posodobiPrvPovzetek()"
+            style="max-width:120px;font-family:var(--mono)" placeholder="0.000">
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em">Skupaj (€)</div>
+          <input type="number" value="${a.skupaj||''}" min="0" step="0.01" class="inp-blue"
+            onchange="novaPrv.artikli[${i}].skupaj=+this.value;posodobiPrvPovzetek()"
+            style="max-width:120px;font-family:var(--mono)" placeholder="0.00">
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em">LOT / Batch</div>
+          <input type="text" value="${a.lot||''}" placeholder="iz COA ali ročno"
+            onchange="novaPrv.artikli[${i}].lot=this.value"
+            style="font-family:var(--mono);font-size:12px">
         </div>
       </div>
 
       <div style="padding:.875rem 1.25rem;display:grid;grid-template-columns:1fr 1fr;gap:1rem">
 
-        <!-- Leva stran: ujemanje in LOT -->
+        <!-- Leva stran: ujemanje, expiry -->
         <div>
           <div style="font-size:11px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Ujemanje v ceniku sestavin</div>
           <select onchange="novaPrv.artikli[${i}].sestavina_id=this.value||null;novaPrv.artikli[${i}].potrjeno=true" style="width:100%;font-size:12px;margin-bottom:8px">
@@ -2187,26 +2219,17 @@ function renderPrvArtikli(){
             ${(cenikSestavineData||[]).map(c=>`<option value="${c.id}"${a.sestavina_id===c.id?' selected':''}>${c.ime}</option>`).join('')}
           </select>
           ${a.predlagano&&!a.potrjeno?`<div style="font-size:11px;color:var(--info);margin-bottom:8px">💡 Predlog: ${a.predlagano} (${Math.round(a.score*100)}% ujemanje)</div>`:''}
-
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-            <div>
-              <div style="font-size:11px;color:var(--text3);margin-bottom:4px">LOT / Batch</div>
-              <input type="text" value="${a.lot||''}" placeholder="iz COA ali ročno"
-                onchange="novaPrv.artikli[${i}].lot=this.value"
-                style="font-family:var(--mono);font-size:12px;padding:6px 8px">
-            </div>
-            <div>
-              <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Expiry date</div>
-              <input type="date" value="${a.expiry||''}"
-                onchange="novaPrv.artikli[${i}].expiry=this.value"
-                style="font-size:12px;padding:6px 8px">
-            </div>
+          <div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Expiry date</div>
+            <input type="date" value="${a.expiry||''}"
+              onchange="novaPrv.artikli[${i}].expiry=this.value"
+              style="font-size:12px;padding:6px 8px">
           </div>
         </div>
 
         <!-- Desna stran: COA -->
         <div>
-          <div style="font-size:11px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">COA certifikat — ${a.naziv_na_racunu}</div>
+          <div style="font-size:11px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">COA certifikat</div>
           <label class="btn" style="cursor:pointer;width:100%;text-align:center;padding:10px;${a.coa_status==='loading'?'opacity:.6;pointer-events:none':''}">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;margin-right:6px;vertical-align:middle"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
             ${a.coa_filename?'↺ Zamenjaj COA':'↑ Naloži COA (PDF)'}
@@ -2222,6 +2245,9 @@ function renderPrvArtikli(){
         </div>
       </div>
     </div>`).join('');
+
+  // Gumb za dodajanje novega artikla ročno
+  el.innerHTML += `<button class="btn btn-sm" onclick="dodajRocniArtikel()" style="margin-top:.5rem">+ Dodaj artikel ročno</button>`;
 
   posodobiPrvProgress();
 }
@@ -2309,52 +2335,59 @@ async function potrdiPrevzemnico(){
   const datum=g('prv-datum')?.value||new Date().toISOString().slice(0,10);
   const dobavitelj=g('prv-dobavitelj')?.value||'';
   const racun_st=g('prv-racun-st')?.value||'';
+  const isEdit = !!novaPrv._editId;
 
   if(!novaPrv.artikli.length){notif('⚠ Ni artiklov za prevzem',2500);return;}
 
-  // Preveri LOT-e
   const brezLot=novaPrv.artikli.filter(a=>!a.lot);
   if(brezLot.length){
     if(!confirm(`${brezLot.length} artiklov nima vnešenega LOT-a. Vseeno potrditi?`))return;
   }
 
-  // Vnesi v zalogo — vsak artikel kot ločen LOT
-  const zalogaVnosi=novaPrv.artikli.map(a=>{
-    const c=a.sestavina_id?(cenikSestavineData||[]).find(x=>x.id===a.sestavina_id):null;
-    return{
-      sestavina_id:a.sestavina_id||null,
-      sestavina_ime:c?c.ime:a.naziv_na_racunu,
-      lot:a.lot||'',
-      enota:a.enota||'kg',
-      kolicina:+a.kolicina||0,
-      cena_enoto:+a.cena_na_enoto||0,
-      expiry_date:a.expiry||null,
-      alergeni:a.alergeni||[],
-      coa_done:a.coa_done||false,
-      coa_filename:a.coa_filename||'',
-      racun_done:true,
-      dobavitelj,
-      datum_prevzema:datum,
-      racun_stevilka:racun_st,
-      status:'aktivna',
-    };
-  });
-
-  const{error:zalogaErr}=await sb.from('zaloga').insert(zalogaVnosi);
-  if(zalogaErr){notif('⚠ Napaka zaloga: '+zalogaErr.message,3500);return;}
-
-  // Shrani prevzemnico
   const skupajVrednost=novaPrv.artikli.reduce((s,a)=>s+(+a.skupaj||0),0);
-  await sb.from('prevzemnice').insert({
-    stevilka,datum,dobavitelj,
-    racun_stevilka:racun_st,
-    artikli:novaPrv.artikli,
-    status:'potrjena',
-    skupaj_vrednost:skupajVrednost,
-    created_by:currentUser?.id,
-  });
 
-  notif(`✓ Prevzem potrjen — ${novaPrv.artikli.length} LOT-ov v zalogi · ${f2(skupajVrednost)} €`);
+  if(isEdit){
+    // UPDATE obstoječe prevzemnice
+    const{error}=await sb.from('prevzemnice').update({
+      stevilka, datum, dobavitelj,
+      racun_stevilka:racun_st,
+      artikli:novaPrv.artikli,
+      skupaj_vrednost:skupajVrednost,
+    }).eq('id',novaPrv._editId);
+    if(error){notif('⚠ Napaka: '+error.message,3500);return;}
+    notif(`✓ Prevzemnica posodobljena`);
+  } else {
+    // Nova prevzemnica — vnesi v zalogo
+    const zalogaVnosi=novaPrv.artikli.map(a=>{
+      const c=a.sestavina_id?(cenikSestavineData||[]).find(x=>x.id===a.sestavina_id):null;
+      return{
+        sestavina_id:a.sestavina_id||null,
+        sestavina_ime:c?c.ime:a.naziv_na_racunu,
+        lot:a.lot||'', enota:a.enota||'kg',
+        kolicina:+a.kolicina||0,
+        cena_enoto:+a.cena_na_enoto||0,
+        expiry_date:a.expiry||null,
+        alergeni:a.alergeni||[],
+        coa_done:a.coa_done||false,
+        coa_filename:a.coa_filename||'',
+        racun_done:true, dobavitelj,
+        datum_prevzema:datum,
+        racun_stevilka:racun_st,
+        status:'aktivna',
+      };
+    });
+    const{error:zalogaErr}=await sb.from('zaloga').insert(zalogaVnosi);
+    if(zalogaErr){notif('⚠ Napaka zaloga: '+zalogaErr.message,3500);return;}
+    await sb.from('prevzemnice').insert({
+      stevilka, datum, dobavitelj,
+      racun_stevilka:racun_st,
+      artikli:novaPrv.artikli,
+      status:'potrjena',
+      skupaj_vrednost:skupajVrednost,
+      created_by:currentUser?.id,
+    });
+    notif(`✓ Prevzem potrjen — ${novaPrv.artikli.length} LOT-ov v zalogi · ${f2(skupajVrednost)} €`);
+  }
 
   // Reset
   novaPrv={stevilka:'',datum:'',dobavitelj:'',racun_st:'',artikli:[]};
@@ -3535,6 +3568,38 @@ async function deleteFormulacija(stevilka, naziv){
   if(error){notif('⚠ Napaka: '+error.message,3500);return;}
   notif(`✓ Formulacija ${stevilka} izbrisana`);
   await loadFormulacije();
+}
+
+function dodajRocniArtikel(){
+  novaPrv.artikli.push({
+    naziv_na_racunu:'Nova sestavina',
+    kolicina:0, enota:'kg', cena_na_enoto:0, skupaj:0,
+    lot:'', expiry:'', alergeni:[],
+    sestavina_id:null, predlagano:null, score:0, potrjeno:false,
+    coa_done:false, coa_filename:'', coa_status:'pending',
+  });
+  const card=document.getElementById('prv-artikli-card');
+  if(card)card.style.display='block';
+  renderPrvArtikli();
+}
+
+async function urediPrevzemnico(id){
+  const{data,error}=await sb.from('prevzemnice').select('*').eq('id',id).single();
+  if(error||!data){notif('Napaka pri nalaganju',2500);return;}
+  novaPrv.artikli=(data.artikli||[]).map(a=>({...a,coa_status:a.coa_done?'done':'pending'}));
+  const g=id=>document.getElementById(id);
+  if(g('prv-stevilka'))g('prv-stevilka').value=data.stevilka||'';
+  if(g('prv-datum'))g('prv-datum').value=data.datum||'';
+  if(g('prv-dobavitelj'))g('prv-dobavitelj').value=data.dobavitelj||'';
+  if(g('prv-racun-st'))g('prv-racun-st').value=data.racun_stevilka||'';
+  novaPrv._editId=id;
+  const card=document.getElementById('prv-artikli-card');
+  if(card)card.style.display='block';
+  const btn=document.getElementById('prv-potrdi-btn');
+  if(btn){btn.style.display='block';btn.textContent='Posodobi prevzem';}
+  renderPrvArtikli();
+  showPanel('nova-prevzemnica');
+  notif('Prevzemnica nalozena za urejanje');
 }
 
 // ── HELPERS ───────────────────────────────────────
