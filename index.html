@@ -1719,7 +1719,13 @@ async function novNalog(){
     pakiranje:document.getElementById('i-pakiranje')?.value||'bulk',
     datum_sprejem:new Date().toISOString().slice(0,10),
     status:'caka',
-    sestavine_coa:formulaData.map(f=>({...f,lot:'',expiry:'',alergeni:[],coa_done:false})),
+    sestavine_coa:formulaData.map(f=>{
+      const c=(cenikSestavineData||[]).find(x=>x.id===f.sestavina_id);
+      const kol_mg=(f.kol||0)*(1+(f.izguba||0)/100);
+      const kolOb=Math.ceil((kolicine[0]||0)*(1+(+(document.getElementById('i-odpad')?.value||3))/100));
+      const kg=(kol_mg/1e6)*kolOb;
+      return{...f, ime:c?c.ime:'?', mg:f.kol||0, kg, lot:'',expiry:'',alergeni:[],coa_done:false,coa_status:'pending'};
+    }),
     created_by:currentUser?.id,
   }).select().single();
   if(error){notif('Napaka: '+error.message,3500);return;}
@@ -1745,7 +1751,39 @@ async function openNalog(id){
   if(error||!data){notif('Napaka pri nalaganju naloga');return;}
 
   aktivniNalog = data;
-  dnSestavine = data.sestavine_coa||[];
+
+  // Dopolni sestavine z imeni iz cenika
+  const sestavineCoa = data.sestavine_coa||[];
+  dnSestavine = sestavineCoa.map(s=>{
+    // Poišči ime iz cenika če ga ni
+    if(!s.ime && s.sestavina_id){
+      const c = (cenikSestavineData||[]).find(x=>x.id===s.sestavina_id);
+      if(c) s.ime = c.ime;
+    }
+    // Če je samo sestavina_id brez imena — uporabi ID kot fallback
+    if(!s.ime && !s.sestavina_id) s.ime = 'Neznana sestavina';
+    return s;
+  });
+
+  // Če ni sestavin — potegni iz formulaData
+  if(!dnSestavine.length && formulaData.length){
+    const kol = data.kolicina||0;
+    const odpad = (data.odpad_pct||3)/100;
+    const kolOb = Math.ceil(kol*(1+odpad));
+    dnSestavine = formulaData.map(f=>{
+      const c = (cenikSestavineData||[]).find(x=>x.id===f.sestavina_id);
+      const kol_mg = (f.kol||0)*(1+(f.izguba||0)/100);
+      const kg = (kol_mg/1e6)*kolOb;
+      return{
+        ...f,
+        ime: c?c.ime:'?',
+        mg: f.kol||0,
+        kg: kg,
+        lot:'', expiry:'', alergeni:[],
+        coa_done:false, coa_filename:'', coa_status:'pending',
+      };
+    });
+  }
 
   // Nastavi header
   document.getElementById('dn-page-title').textContent = data.naziv;
