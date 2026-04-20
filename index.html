@@ -3159,32 +3159,15 @@ async function uvozFormulacijoStranke(input){
       vsebina = await file.text();
     }
 
-    const prompt = `Si strokovnjak za branje farmacevtskih in prehranskih formulacij/receptur.
-
-Iz tega dokumenta izlušči VSE sestavine formulacije in vrni SAMO JSON brez razlage:
-{
-  "naziv_izdelka": "ime izdelka če je razvidno",
-  "velikost_kapsule": "npr. 00, 0, 1 če je razvidno",
-  "tip_kapsule": "npr. HPMC, Gelatina če je razvidno",
-  "skupaj_mg": skupaj mg vsebine če je razvidno (število),
-  "sestavine": [
-    {
-      "ime": "točno ime sestavine kot piše v dokumentu",
-      "kolicina": numerična vrednost,
-      "enota": "mg ali ml ali %",
-      "del": "A ali B ali prazno če ni razvidno",
-      "opomba": "kakršnakoli opomba ali specifikacija"
-    }
-  ]
-}
-
-Vrni SAMO JSON. Če je enota v %, pretvori v mg glede na skupno težo če je znana, sicer ohrani %.`;
+    const prompt = `Izlušči sestavine formulacije iz dokumenta in vrni SAMO JSON (brez besedila pred ali za JSON):
+{"naziv_izdelka":"","velikost_kapsule":"","tip_kapsule":"","skupaj_mg":null,"sestavine":[{"ime":"","kolicina":0,"enota":"mg","del":"","opomba":""}]}
+Opomba: enota je mg ali ml ali %. Vrni SAMO JSON.`;
 
     let response;
     if(isPdf){
       response = await fetch('/api/claude',{
         method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:2000,
+        body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:4000,
           messages:[{role:'user',content:[
             {type:'document',source:{type:'base64',media_type:'application/pdf',data:base64}},
             {type:'text',text:prompt}
@@ -3200,22 +3183,49 @@ Vrni SAMO JSON. Če je enota v %, pretvori v mg glede na skupno težo če je zna
       vsebina = JSON.stringify(jsonData);
       response = await fetch('/api/claude',{
         method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:2000,
+        body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:4000,
           messages:[{role:'user',content:`${prompt}\n\nPodatki iz Excel datoteke:\n${vsebina}`}]
         })
       });
     } else {
       response = await fetch('/api/claude',{
         method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:2000,
+        body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:4000,
           messages:[{role:'user',content:`${prompt}\n\nVsebina dokumenta:\n${vsebina}`}]
         })
       });
     }
 
     const data = await response.json();
-    const text = (data.content?.map(c=>c.text||'').join('')||'').replace(/```json|```/g,'').trim();
-    const parsed = JSON.parse(text);
+    let text = (data.content?.map(c=>c.text||'').join('')||'').replace(/```json|```/g,'').trim();
+
+    // Robustno parsiranje — izvleci JSON iz odgovora
+    let parsed;
+    try {
+      parsed = JSON.parse(text);
+    } catch(e) {
+      // Poskusi najti JSON objekt v besedilu
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if(jsonMatch){
+        try { parsed = JSON.parse(jsonMatch[0]); }
+        catch(e2) {
+          // Poskusi popraviti odrezan JSON — dodaj zaključne oklepaje
+          let fixed = jsonMatch[0];
+          const openB = (fixed.match(/\[/g)||[]).length;
+          const closeB = (fixed.match(/\]/g)||[]).length;
+          const openC = (fixed.match(/\{/g)||[]).length;
+          const closeC = (fixed.match(/\}/g)||[]).length;
+          // Zaključi odprte nize
+          if(fixed.endsWith(',')) fixed = fixed.slice(0,-1);
+          for(let i=0;i<openB-closeB;i++) fixed += ']';
+          for(let i=0;i<openC-closeC;i++) fixed += '}';
+          try { parsed = JSON.parse(fixed); }
+          catch(e3) { throw new Error('Ni mogoče prebrati odgovora. Poskusite z manjšim dokumentom.'); }
+        }
+      } else {
+        throw new Error('Ni mogoče prebrati odgovora.');
+      }
+    }
 
     if(!parsed.sestavine?.length){
       if(statusTxt)statusTxt.innerHTML='<span style="color:var(--danger)">⚠ Ni bilo mogoče prepoznati sestavin. Preverite format dokumenta.</span>';
