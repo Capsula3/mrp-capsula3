@@ -252,7 +252,7 @@ tr:hover td{background:var(--surface2)}
         <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M11 2a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1h6z"/></svg>
         Rezultat
       </div>
-      <div class="nav-section" style="margin-top:8px">Ponudbe</div>
+      <div class="nav-section" style="margin-top:8px">Nabava &amp; Ponudbe</div>
       <div class="nav-item" onclick="showPanel('ponudbe');loadPonudbe()">
         <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M14.5 3a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5h-13a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h13zm-13-1A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h13a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 14.5 2h-13z"/></svg>
         Vse ponudbe
@@ -979,11 +979,12 @@ tr:hover td{background:var(--surface2)}
       <div id="panel-nova-ponudba" class="panel">
         <div class="flex-between">
           <div>
-            <div class="page-title" id="np-title">Nova ponudba</div>
-            <div class="page-sub" id="np-sub">Uvozite formulacijo stranke → kalkulacija → Excel za dobavitelje → ponudba</div>
+            <div class="page-title" id="np-title">Hitri kalkulator nabave</div>
+            <div class="page-sub" id="np-sub">Uvozite formulacijo → preverite zalogo in cenike → Excel za dobavitelje → shranite kot ponudbo</div>
           </div>
           <div class="flex-gap">
             <button class="btn btn-sm" onclick="showPanel('ponudbe');loadPonudbe()">← Nazaj</button>
+            <button class="btn btn-sm" onclick="preveriZalogoPonudba()" id="np-zaloga-btn" style="display:none">🔍 Preveri zalogo</button>
             <button class="btn btn-sm" onclick="izvozExcelDobavitelji()" id="np-excel-btn" style="display:none">📊 Excel za dobavitelje</button>
             <button class="btn btn-sm btn-primary" onclick="shraniPonudbo()" id="np-shrani-btn" style="display:none">💾 Shrani ponudbo</button>
           </div>
@@ -1047,7 +1048,8 @@ tr:hover td{background:var(--surface2)}
                 <th style="min-width:80px">Enota</th>
                 <th style="min-width:130px">Dobavitelj</th>
                 <th style="min-width:120px">Cena/kg (€)</th>
-                <th style="min-width:80px">Iz cenika</th>
+                <th style="min-width:100px">Na zalogi</th>
+                <th style="min-width:100px">Status</th>
                 <th style="width:36px"></th>
               </tr></thead>
               <tbody id="np-sestavine-body"></tbody>
@@ -3971,6 +3973,7 @@ PRAVILA: kolicina = vrednost iz "mg per capsule" ali "mg/cap" ali "mg". Vrni SAM
     if(g('np-rezultat-card'))g('np-rezultat-card').style.display='block';
     if(g('np-excel-btn'))g('np-excel-btn').style.display='block';
     if(g('np-shrani-btn'))g('np-shrani-btn').style.display='block';
+    if(g('np-zaloga-btn'))g('np-zaloga-btn').style.display='block';
 
     const ujemanja=aktivnaPonudba.sestavine.filter(s=>s.iz_cenika).length;
     if(statusEl)statusEl.innerHTML=`<span style="color:var(--accent-text)">✓ ${aktivnaPonudba.sestavine.length} sestavin · ${ujemanja} v ceniku</span>`;
@@ -3983,32 +3986,92 @@ PRAVILA: kolicina = vrednost iz "mg per capsule" ali "mg/cap" ali "mg". Vrni SAM
 
 function renderNPSestavine(){
   const body=document.getElementById('np-sestavine-body');if(!body)return;
-  body.innerHTML=aktivnaPonudba.sestavine.map((s,i)=>`<tr>
-    <td>
-      <input type="text" value="${s.ime}" onchange="aktivnaPonudba.sestavine[${i}].ime=this.value" style="min-width:180px">
-      ${s.cenik_ime&&s.cenik_ime!==s.ime?`<div style="font-size:10px;color:var(--info)">→ ${s.cenik_ime}</div>`:''}
-    </td>
-    <td>
-      <div style="display:flex;gap:4px;align-items:center">
-        <input type="number" value="${s.kolicina}" class="inp-blue" onchange="aktivnaPonudba.sestavine[${i}].kolicina=+this.value" min="0" step="0.001" style="max-width:90px">
-      </div>
-    </td>
-    <td>
-      <select onchange="aktivnaPonudba.sestavine[${i}].enota=this.value" style="max-width:65px;font-size:12px">
+  body.innerHTML=aktivnaPonudba.sestavine.map((s,i)=>{
+    // Status glede na zalogo in cenik
+    let statusHtml='<span class="badge badge-gray" style="font-size:10px">—</span>';
+    let zalogoHtml='<span class="text-sm">—</span>';
+
+    if(s._zaloga_preverjena){
+      const naZalogi = s._zaloga_kg||0;
+      const maxPotrebno = s._max_kg||0;
+      if(naZalogi>=maxPotrebno){
+        statusHtml='<span class="badge badge-green" style="font-size:10px">✓ Dovolj na zalogi</span>';
+        zalogoHtml=`<span class="text-mono" style="color:var(--accent-text)">${f4(naZalogi)} kg</span>`;
+      } else if(naZalogi>0){
+        const manjka=maxPotrebno-naZalogi;
+        statusHtml=`<span class="badge badge-warn" style="font-size:10px">⚠ Manjka ${f4(manjka)} kg</span>`;
+        zalogoHtml=`<span class="text-mono" style="color:var(--warn)">${f4(naZalogi)} kg</span>`;
+      } else {
+        statusHtml='<span class="badge badge-red" style="font-size:10px">✗ Ni na zalogi</span>';
+        zalogoHtml='<span class="text-sm" style="color:var(--danger)">0 kg</span>';
+      }
+    } else if(s.iz_cenika){
+      statusHtml='<span class="badge badge-blue" style="font-size:10px">V ceniku</span>';
+    }
+
+    return`<tr style="${s._zaloga_preverjena&&!s._zaloga_kg?'background:var(--danger-light)':s._zaloga_preverjena&&s._zaloga_kg<(s._max_kg||0)?'background:var(--warn-light)':''}">
+      <td>
+        <input type="text" value="${s.ime}" onchange="aktivnaPonudba.sestavine[${i}].ime=this.value" style="min-width:180px">
+        ${s.cenik_ime&&s.cenik_ime!==s.ime?`<div style="font-size:10px;color:var(--info)">→ ${s.cenik_ime}</div>`:''}
+      </td>
+      <td><input type="number" value="${s.kolicina}" class="inp-blue" onchange="aktivnaPonudba.sestavine[${i}].kolicina=+this.value" min="0" step="0.001" style="max-width:90px"></td>
+      <td><select onchange="aktivnaPonudba.sestavine[${i}].enota=this.value" style="max-width:65px;font-size:12px">
         <option${s.enota==='mg'?' selected':''}>mg</option>
         <option${s.enota==='ml'?' selected':''}>ml</option>
-      </select>
-    </td>
-    <td><input type="text" value="${s.dobavitelj||''}" onchange="aktivnaPonudba.sestavine[${i}].dobavitelj=this.value" placeholder="—" style="min-width:120px"></td>
-    <td>
-      <div style="display:flex;gap:4px;align-items:center">
+      </select></td>
+      <td><input type="text" value="${s.dobavitelj||''}" onchange="aktivnaPonudba.sestavine[${i}].dobavitelj=this.value" placeholder="—" style="min-width:120px"></td>
+      <td><div style="display:flex;gap:4px;align-items:center">
         <input type="number" value="${s.cena_kg||''}" class="inp-blue" onchange="aktivnaPonudba.sestavine[${i}].cena_kg=+this.value" min="0" step="0.01" placeholder="0.00" style="max-width:100px;font-family:var(--mono)">
         <span class="text-sm">€/kg</span>
-      </div>
-    </td>
-    <td>${s.iz_cenika?'<span class="badge badge-green" style="font-size:10px">✓ Cenik</span>':'<span class="badge badge-warn" style="font-size:10px">Ročno</span>'}</td>
-    <td><button class="btn btn-del" onclick="aktivnaPonudba.sestavine.splice(${i},1);renderNPSestavine()">✕</button></td>
-  </tr>`).join('');
+      </div></td>
+      <td>${zalogoHtml}</td>
+      <td>${statusHtml}</td>
+      <td><button class="btn btn-del" onclick="aktivnaPonudba.sestavine.splice(${i},1);renderNPSestavine()">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+
+async function preveriZalogoPonudba(){
+  if(!aktivnaPonudba.sestavine.length){notif('Ni sestavin',2500);return;}
+  if(!aktivnaPonudba.kolicine.length){notif('Vnesite količine',2500);return;}
+
+  notif('⟳ Preverjam zalogo…');
+
+  // Naloži zalogo iz Supabase
+  const{data:zalogaDB}=await sb.from('zaloga').select('sestavina_id,sestavina_ime,kolicina,enota,lot,expiry_date').eq('status','aktivna');
+
+  // Za vsako sestavino izračunaj max potrebno kg
+  const maxKol=Math.max(...aktivnaPonudba.kolicine);
+  const maxKolOb=Math.ceil(maxKol*1.03);
+
+  aktivnaPonudba.sestavine=aktivnaPonudba.sestavine.map(s=>{
+    const kol_mg=s.kolicina||0;
+    const maxKg=(kol_mg/1e6)*maxKolOb;
+
+    // Poišči na zalogi po sestavina_id ali imenu
+    const zalogaLoti=(zalogaDB||[]).filter(z=>
+      (s.cenik_id&&z.sestavina_id===s.cenik_id)||
+      z.sestavina_ime?.toLowerCase()===s.ime.toLowerCase()
+    );
+    const zalogaKg=zalogaLoti.reduce((sum,z)=>sum+(+z.kolicina||0),0);
+
+    return{
+      ...s,
+      _zaloga_preverjena:true,
+      _zaloga_kg:zalogaKg,
+      _max_kg:maxKg,
+      _zaloga_loti:zalogaLoti,
+    };
+  });
+
+  renderNPSestavine();
+
+  // Povzetek
+  const dovolj=aktivnaPonudba.sestavine.filter(s=>s._zaloga_kg>=(s._max_kg||0)).length;
+  const manjka=aktivnaPonudba.sestavine.filter(s=>s._zaloga_kg<(s._max_kg||0)&&s._zaloga_kg>0).length;
+  const ni=aktivnaPonudba.sestavine.filter(s=>!s._zaloga_kg).length;
+
+  notif(`✓ Zaloga preverjena: ${dovolj} dovolj · ${manjka} delno · ${ni} ni na zalogi`);
 }
 
 function addNPSestavina(){
@@ -4125,21 +4188,25 @@ function izvozExcelDobavitelji(){
   if(!aktivnaPonudba.sestavine.length){notif('Ni sestavin za izvoz',2500);return;}
 
   // Pripravi podatke — ena vrstica na sestavino, stolpci za vsako količino
-  const header=['Sestavina','mg/kapsulo','Enota','Dobavitelj','Cena/kg (€)','Iz cenika'];
+  const header=['Sestavina','mg/kapsulo','Enota','Dobavitelj','Cena/kg (€)','Na zalogi (kg)','Status'];
   const kolHeader=aktivnaPonudba.kolicine.map(k=>`Potrebno kg (${fN(k)} kaps)`);
 
   const rows=aktivnaPonudba.sestavine.map(s=>{
+    const naZalogi=s._zaloga_kg||0;
+    const status=s._zaloga_preverjena?(naZalogi>=(s._max_kg||0)?'Dovolj':naZalogi>0?'Delno':'Ni na zalogi'):'Ni preverjeno';
     const row=[
       s.ime, s.kolicina, s.enota,
       s.dobavitelj||'',
       s.cena_kg||'',
-      s.iz_cenika?'Da':'Ne',
+      naZalogi||'',
+      status,
     ];
-    // Dodaj kg za vsako količino
     aktivnaPonudba.kolicine.forEach(kol=>{
       const kolOb=Math.ceil(kol*1.03);
       const kg=(s.kolicina/1e6)*kolOb;
-      row.push(+kg.toFixed(4));
+      // Odštej zalogo
+      const potrebno=Math.max(0,kg-naZalogi);
+      row.push(+potrebno.toFixed(4));
     });
     return row;
   });
@@ -4152,17 +4219,19 @@ function izvozExcelDobavitelji(){
   // Dodaj povpraševanje vrstico
   const nazPonudba=document.getElementById('np-naziv')?.value||'ponudba';
   const ws2Data=[
-    ['POVPRAŠEVANJE ZA CENE SESTAVIN','','','','',''],
-    ['Ponudba:',nazPonudba,'','','',''],
-    ['Datum:',new Date().toLocaleDateString('sl-SI'),'','','',''],
-    ['','','','','',''],
-    [...header,...kolHeader],
+    ['POVPRAŠEVANJE ZA CENE SESTAVIN','','','','','',''],
+    ['Ponudba:',nazPonudba,'','','','',''],
+    ['Datum:',new Date().toLocaleDateString('sl-SI'),'','','','',''],
+    ['','','','','','',''],
+    ['OPOMBA: Stolpec "Potrebno naročiti" že upošteva obstoječo zalogo.','','','','','',''],
+    ['','','','','','',''],
+    [...header,...kolHeader.map(h=>'NAROČITI: '+h)],
     ...rows,
-    ['','','','','',''],
-    ['OPOMBA: Prosimo za cene za navedene količine. Zahvaljujemo se za ponudbo.'],
+    ['','','','','','',''],
+    ['Prosimo za cene za navedene količine. Hvala za ponudbo.'],
   ];
   const ws2=XLSX.utils.aoa_to_sheet(ws2Data);
-  ws2['!cols']=[{wch:30},{wch:12},{wch:8},{wch:20},{wch:12},{wch:10},...aktivnaPonudba.kolicine.map(()=>({wch:18}))];
+  ws2['!cols']=[{wch:30},{wch:12},{wch:8},{wch:20},{wch:12},{wch:14},{wch:16},...aktivnaPonudba.kolicine.map(()=>({wch:20}))];
 
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws2,'Povpraševanje dobavitelji');
@@ -4237,7 +4306,7 @@ async function odpriPonudbo(id){
     renderNPSestavine();
     renderNPKolicine();
     if(data.rezultati?.length)renderNPRezultat();
-    ['np-sestavine-card','np-kolicine-card','np-rezultat-card','np-excel-btn','np-shrani-btn'].forEach(id=>{
+    ['np-sestavine-card','np-kolicine-card','np-rezultat-card','np-excel-btn','np-shrani-btn','np-zaloga-btn'].forEach(id=>{
       const el=g(id);if(el)el.style.display='block';
     });
   }
