@@ -3161,7 +3161,12 @@ async function uvozFormulacijoStranke(input){
 
     const prompt = `Izlušči sestavine formulacije iz dokumenta in vrni SAMO JSON (brez besedila pred ali za JSON):
 {"naziv_izdelka":"","velikost_kapsule":"","tip_kapsule":"","skupaj_mg":null,"sestavine":[{"ime":"","kolicina":0,"enota":"mg","del":"","opomba":""}]}
-Opomba: enota je mg ali ml ali %. Vrni SAMO JSON.`;
+
+PRAVILA za kolicina:
+- Vzemi vrednost iz stolpca/polja "mg per capsule", "mg/capsule", "mg per cap", "mg/cap", "per capsule" ali podobno
+- Ce taksnega stolpca ni, vzemi vrednost iz "mg", "amount", "quantity" ali podobno
+- Enota je vedno "mg" razen ce je eksplicitno drugace (ml, %)
+- Vrni SAMO JSON.`;
 
     let response;
     if(isPdf){
