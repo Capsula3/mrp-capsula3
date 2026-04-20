@@ -266,7 +266,11 @@ tr:hover td{background:var(--surface2)}
         <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M5 4a.5.5 0 0 0 0 1h6a.5.5 0 0 0 0-1H5z"/><path d="M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2z"/></svg>
         Delovni nalogi
       </div>
-      <div class="nav-section" style="margin-top:8px">Zaloga</div>
+      <div class="nav-item" onclick="showPanel('narocilnice');loadNarocilnice()">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M1 2.828c.885-.37 2.154-.769 3.388-.893 1.33-.134 2.458.063 3.112.752v9.746c-.935-.53-2.12-.603-3.213-.493-1.18.12-2.37.461-3.287.811V2.828zm7.5-.141c.654-.689 1.782-.886 3.112-.752 1.234.124 2.503.523 3.388.893v9.966c-.917-.35-2.107-.692-3.287-.81-1.094-.111-2.278-.039-3.213.492V2.687zM8 1.783C7.015.936 5.587.81 4.287.94c-1.514.153-3.042.672-3.994 1.105A.5.5 0 0 0 0 2.5v11a.5.5 0 0 0 .707.455c.882-.4 2.303-.881 3.68-1.02 1.409-.142 2.59.087 3.223.877a.5.5 0 0 0 .78 0c.633-.79 1.814-1.019 3.222-.877 1.378.139 2.8.62 3.681 1.02A.5.5 0 0 0 16 13.5v-11a.5.5 0 0 0-.293-.455c-.952-.433-2.48-.952-3.994-1.105C10.413.809 8.985.936 8 1.783z"/></svg>
+        Naročilnice
+      </div>
+      <div class="nav-section" style="margin-top:8px">Skladišče</div>
       <div class="nav-item" onclick="showPanel('zaloga');loadZaloga()">
         <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M0 3.5A1.5 1.5 0 0 1 1.5 2h9A1.5 1.5 0 0 1 12 3.5V5h1.5A1.5 1.5 0 0 1 15 6.5v8.25a.75.75 0 0 1-1.5 0V6.5a.5.5 0 0 0-.5-.5H12v8.5a1 1 0 0 1-1 1H1a1 1 0 0 1-1-1V3.5z"/></svg>
         Pregled zaloge
@@ -274,6 +278,14 @@ tr:hover td{background:var(--surface2)}
       <div class="nav-item" onclick="showPanel('prevzemnice');loadPrevzemnice()">
         <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="M10.97 4.97a.75.75 0 0 1 1.071 1.05l-3.992 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425z"/></svg>
         Prevzemnice
+      </div>
+      <div class="nav-item" onclick="showPanel('izdajnice');loadIzdajnice()">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a2.5 2.5 0 0 1 2.5 2.5V4h-5v-.5A2.5 2.5 0 0 1 8 1zm3.5 3v-.5a3.5 3.5 0 1 0-7 0V4H1v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4h-3.5z"/></svg>
+        Izdajnice
+      </div>
+      <div class="nav-item" onclick="showPanel('povratnice');loadPovratnice()">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M11.534 7h3.932a.25.25 0 0 1 .192.41l-1.966 2.36a.25.25 0 0 1-.384 0l-1.966-2.36a.25.25 0 0 1 .192-.41zm-11 2h3.932a.25.25 0 0 0 .192-.41L2.692 6.23a.25.25 0 0 0-.384 0L.342 8.59A.25.25 0 0 0 .534 9z"/><path fill-rule="evenodd" d="M8 3c-1.552 0-2.94.707-3.857 1.818a.5.5 0 1 1-.771-.636A6.002 6.002 0 0 1 13.917 7H12.9A5.002 5.002 0 0 0 8 3zM3.1 9a5.002 5.002 0 0 0 8.757 2.182.5.5 0 1 1 .771.636A6.002 6.002 0 0 1 2.083 9H3.1z"/></svg>
+        Povratnice
       </div>
       <div class="nav-section" style="margin-top:8px">CRM</div>
       <div class="nav-item" onclick="showPanel('stranke');loadStranke()">
@@ -760,6 +772,8 @@ tr:hover td{background:var(--surface2)}
           </div>
           <div class="flex-gap">
             <button class="btn btn-sm" onclick="showPanel('nalogi');loadNalogi()">← Nazaj</button>
+            <button class="btn btn-sm" onclick="ustvariNarocilnicoIzNaloga(aktivniNalog?.id)" title="Ustvari naročilnico za dobavitelje">📋 Naročilnica</button>
+            <button class="btn btn-sm" onclick="ustvariIzdajnicoIzNaloga(aktivniNalog?.id)" title="Izda sestavine iz skladišča">📦 Izdajnica</button>
             <button class="btn btn-sm" onclick="shraniNalog()">💾 Shrani</button>
             <button class="btn btn-sm" onclick="window.print()">🖨 Natisni</button>
           </div>
@@ -1081,6 +1095,193 @@ tr:hover td{background:var(--surface2)}
         </div>
       </div>
 
+      <!-- NAROČILNICE -->
+      <div id="panel-narocilnice" class="panel">
+        <div class="flex-between">
+          <div><div class="page-title">Naročilnice</div><div class="page-sub">Naročila sestavin dobaviteljem — avtomatsko iz delovnega naloga</div></div>
+          <button class="btn btn-sm btn-primary" onclick="novaRocnaNarocilnica()">+ Ročna naročilnica</button>
+        </div>
+        <div id="narocilnice-lista"></div>
+      </div>
+
+      <!-- NAROČILNICA DETAIL -->
+      <div id="panel-narocilnica-detail" class="panel">
+        <div class="flex-between">
+          <div>
+            <div class="page-title" id="narc-title">Naročilnica</div>
+            <div class="page-sub" id="narc-sub"></div>
+          </div>
+          <div class="flex-gap">
+            <button class="btn btn-sm" onclick="showPanel('narocilnice');loadNarocilnice()">← Nazaj</button>
+            <button class="btn btn-sm" onclick="izvozNarocilnicaExcel()">📊 Excel</button>
+            <button class="btn btn-sm btn-primary" onclick="shraniNarocilnico()">💾 Shrani</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Podatki naročila</span></div>
+          <div class="card-body">
+            <div class="form-grid" style="max-width:580px">
+              <label class="form-label">Številka naročilnice</label>
+              <input type="text" id="narc-stevilka" class="inp-blue" style="max-width:180px;font-family:var(--mono)">
+              <label class="form-label">Delovni nalog</label>
+              <div id="narc-nalog-info" style="font-size:13px;color:var(--text2)">—</div>
+              <label class="form-label">Dobavitelj</label>
+              <input type="text" id="narc-dobavitelj" class="inp-blue" placeholder="Ime dobavitelja">
+              <label class="form-label">Datum naročila</label>
+              <input type="date" id="narc-datum" class="inp-blue" style="max-width:180px">
+              <label class="form-label">Pričakovan datum dostave</label>
+              <input type="date" id="narc-datum-dobave" class="inp-blue" style="max-width:180px">
+              <label class="form-label">Status</label>
+              <select id="narc-status" class="inp-blue" style="max-width:220px">
+                <option value="osnutek">Osnutek</option>
+                <option value="poslana">✉ Poslana dobavitelju</option>
+                <option value="delno_prispelo">⚡ Delno prispelo</option>
+                <option value="prispelo">✓ Vse prispelo</option>
+                <option value="zaprta">Zaprta</option>
+              </select>
+              <label class="form-label">Opomba</label>
+              <input type="text" id="narc-opomba" placeholder="—">
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Artikli naročila</span>
+            <button class="btn btn-sm" onclick="addNarcArtikel()">+ Dodaj artikel</button>
+          </div>
+          <div class="card-body" style="padding:.75rem">
+            <div class="tbl-wrap"><table>
+              <thead><tr>
+                <th style="min-width:200px">Sestavina</th>
+                <th style="min-width:120px">Količina</th>
+                <th style="min-width:80px">Enota</th>
+                <th style="min-width:150px">Dobavitelj</th>
+                <th style="min-width:120px">Est. cena/enoto (€)</th>
+                <th style="min-width:100px">Est. skupaj (€)</th>
+                <th style="min-width:120px">Tip sestavine</th>
+                <th style="width:36px"></th>
+              </tr></thead>
+              <tbody id="narc-artikli-body"></tbody>
+            </table></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- IZDAJNICE -->
+      <div id="panel-izdajnice" class="panel">
+        <div class="flex-between">
+          <div><div class="page-title">Izdajnice</div><div class="page-sub">Odjem sestavin iz skladišča v mešalnico</div></div>
+        </div>
+        <div id="izdajnice-lista"></div>
+      </div>
+
+      <!-- IZDAJNICA DETAIL -->
+      <div id="panel-izdajnica-detail" class="panel">
+        <div class="flex-between">
+          <div>
+            <div class="page-title" id="izd-title">Izdajnica</div>
+            <div class="page-sub" id="izd-sub"></div>
+          </div>
+          <div class="flex-gap">
+            <button class="btn btn-sm" onclick="showPanel('izdajnice');loadIzdajnice()">← Nazaj</button>
+            <button class="btn btn-sm" onclick="window.print()">🖨 Natisni</button>
+            <button class="btn btn-sm btn-primary" onclick="potrdiIzdajnico()">✓ Potrdi izdajo</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Podatki izdaje</span></div>
+          <div class="card-body">
+            <div class="form-grid" style="max-width:560px">
+              <label class="form-label">Številka izdajnice</label>
+              <input type="text" id="izd-stevilka" class="inp-blue" style="max-width:180px;font-family:var(--mono)">
+              <label class="form-label">Delovni nalog</label>
+              <div id="izd-nalog-info" style="font-size:13px;color:var(--text2)">—</div>
+              <label class="form-label">Datum izdaje</label>
+              <input type="date" id="izd-datum" class="inp-blue" style="max-width:180px">
+              <label class="form-label">Izdal</label>
+              <input type="text" id="izd-izdal" class="inp-blue" placeholder="Ime in priimek">
+              <label class="form-label">Prevzel</label>
+              <input type="text" id="izd-prevzel" class="inp-blue" placeholder="Ime in priimek">
+              <label class="form-label">Opomba</label>
+              <input type="text" id="izd-opomba" placeholder="—">
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Sestavine za izdajo (po LOT)</span></div>
+          <div class="card-body" style="padding:.75rem">
+            <div class="tbl-wrap"><table>
+              <thead><tr>
+                <th style="min-width:180px">Sestavina</th>
+                <th style="min-width:120px">LOT</th>
+                <th style="min-width:100px">Razdelek</th>
+                <th style="min-width:100px">Na zalogi</th>
+                <th style="min-width:110px">Potrebno (kg)</th>
+                <th style="min-width:110px">Izdati (kg)</th>
+                <th style="min-width:80px">Expiry</th>
+              </tr></thead>
+              <tbody id="izd-artikli-body"></tbody>
+            </table></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- POVRATNICE -->
+      <div id="panel-povratnice" class="panel">
+        <div class="flex-between">
+          <div><div class="page-title">Povratnice</div><div class="page-sub">Vračilo neporabljenih sestavin iz mešalnice v skladišče</div></div>
+        </div>
+        <div id="povratnice-lista"></div>
+      </div>
+
+      <!-- POVRATNICA DETAIL -->
+      <div id="panel-povratnica-detail" class="panel">
+        <div class="flex-between">
+          <div>
+            <div class="page-title" id="pov-title">Povratnica</div>
+            <div class="page-sub" id="pov-sub"></div>
+          </div>
+          <div class="flex-gap">
+            <button class="btn btn-sm" onclick="showPanel('povratnice');loadPovratnice()">← Nazaj</button>
+            <button class="btn btn-sm btn-primary" onclick="potrdiPovratnico()">✓ Vrni v zalogo</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Podatki vračila</span></div>
+          <div class="card-body">
+            <div class="form-grid" style="max-width:560px">
+              <label class="form-label">Številka povratnice</label>
+              <input type="text" id="pov-stevilka" class="inp-blue" style="max-width:180px;font-family:var(--mono)">
+              <label class="form-label">Delovni nalog</label>
+              <div id="pov-nalog-info" style="font-size:13px;color:var(--text2)">—</div>
+              <label class="form-label">Datum vračila</label>
+              <input type="date" id="pov-datum" class="inp-blue" style="max-width:180px">
+              <label class="form-label">Vrnil</label>
+              <input type="text" id="pov-vrnil" class="inp-blue" placeholder="Ime in priimek">
+              <label class="form-label">Prejel</label>
+              <input type="text" id="pov-prejel" class="inp-blue" placeholder="Ime in priimek">
+              <label class="form-label">Opomba</label>
+              <input type="text" id="pov-opomba" placeholder="—">
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Vrnjene sestavine</span><button class="btn btn-sm" onclick="addPovArtikel()">+ Dodaj</button></div>
+          <div class="card-body" style="padding:.75rem">
+            <div class="tbl-wrap"><table>
+              <thead><tr>
+                <th style="min-width:180px">Sestavina</th>
+                <th style="min-width:120px">LOT (original)</th>
+                <th style="min-width:110px">Vrnjeno (kg)</th>
+                <th style="min-width:130px">Vrni v razdelek</th>
+                <th style="min-width:100px">Expiry</th>
+              </tr></thead>
+              <tbody id="pov-artikli-body"></tbody>
+            </table></div>
+          </div>
+        </div>
+      </div>
+
       <!-- STRANKE -->
       <div id="panel-stranke" class="panel">
         <div class="flex-between">
@@ -1229,6 +1430,7 @@ function showApp(){
   loadStrojiForSelect();
   loadCenikSestavineForFormula();
   loadCenikKapsulForSelect();
+  loadRazdelki();
 }
 
 async function prijava(){
@@ -3806,6 +4008,18 @@ async function urediPrevzemnico(id){
   notif('Prevzemnica nalozena za urejanje');
 }
 
+// ── RAZDELKI SKLADIŠČA ────────────────────────────
+let razdelkiData = [];
+
+async function loadRazdelki(){
+  const{data}=await sb.from('skladisce_razdelki').select('*').eq('aktiven',true).order('ime');
+  razdelkiData=data||[];
+}
+
+function razdelkiSelect(selected=''){
+  return razdelkiData.map(r=>`<option value="${r.id}"${r.id===selected?' selected':''}>${r.ime}</option>`).join('');
+}
+
 // ── HELPERS ───────────────────────────────────────
 
 function matchScore(a, b){
@@ -4319,6 +4533,374 @@ async function deletePonudba(id){
   await sb.from('ponudbe').delete().eq('id',id);
   notif('✓ Ponudba izbrisana');
   await loadPonudbe();
+}
+
+// ── NAROČILNICE ───────────────────────────────────
+let narocilniceData=[];
+let aktivnaNarocilnica={stevilka:'',nalog_id:null,dobavitelj:'',datum:'',datum_dobave:'',status:'osnutek',opomba:'',artikli:[],_id:null};
+
+async function loadNarocilnice(){
+  const{data}=await sb.from('narocilnice').select('*,delovni_nalogi(stevilka,naziv)').order('created_at',{ascending:false});
+  narocilniceData=data||[];
+  renderNarocilnice();
+}
+
+function renderNarocilnice(){
+  const el=document.getElementById('narocilnice-lista');if(!el)return;
+  if(!narocilniceData.length){el.innerHTML='<div class="empty">Ni narocilnic.</div>';return;}
+  const statusMap={osnutek:'badge-gray',poslana:'badge-blue',delno_prispelo:'badge-warn',prispelo:'badge-green',zaprta:'badge-gray'};
+  el.innerHTML=narocilniceData.map(n=>`
+    <div class="card" style="margin-bottom:.875rem">
+      <div style="padding:.875rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-weight:500;font-size:14px">${n.stevilka} <span class="text-sm">- ${n.dobavitelj||'-'}</span></div>
+          <div class="text-sm">${n.datum||'-'} Nalog: ${n.delovni_nalogi?.stevilka||'-'} ${(n.artikli||[]).length} artiklov</div>
+        </div>
+        <div class="flex-gap">
+          <span class="badge ${statusMap[n.status]||'badge-gray'}">${n.status}</span>
+          <button class="btn btn-sm" onclick="odpriNarocilnico('${n.id}')">Odpri</button>
+          <button class="btn btn-del" onclick="deleteNarocilnica('${n.id}')">X</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+async function ustvariNarocilnicoIzNaloga(nalogId){
+  const{data:nalog}=await sb.from('delovni_nalogi').select('*').eq('id',nalogId).single();
+  if(!nalog){notif('Nalog ni najden',2500);return;}
+  const leto=new Date().getFullYear();
+  const{count}=await sb.from('narocilnice').select('*',{count:'exact',head:true});
+  const stevilka=`NAR-${leto}-${String((count||0)+1).padStart(3,'0')}`;
+  const sestavine=nalog.sestavine_coa||[];
+  const artikli=sestavine.map(s=>{
+    const c=(cenikSestavineData||[]).find(x=>x.id===s.sestavina_id);
+    return{sestavina_id:s.sestavina_id||null,sestavina_ime:s.ime||c?.ime||'?',
+      kolicina:+(s.kg||0).toFixed(4),enota:'kg',dobavitelj:c?.dobavitelj||'',
+      cena_enoto:0,skupaj:0,tip:'nalog',status:'naroceno'};
+  });
+  aktivnaNarocilnica={stevilka,nalog_id:nalogId,nalog_stevilka:nalog.stevilka,nalog_naziv:nalog.naziv,
+    dobavitelj:'',datum:new Date().toISOString().slice(0,10),datum_dobave:'',status:'osnutek',opomba:'',artikli,_id:null};
+  renderNarocilnicaDetail();
+  showPanel('narocilnica-detail');
+}
+
+function novaRocnaNarocilnica(){
+  const leto=new Date().getFullYear();
+  aktivnaNarocilnica={stevilka:`NAR-${leto}-XXX`,nalog_id:null,dobavitelj:'',
+    datum:new Date().toISOString().slice(0,10),datum_dobave:'',status:'osnutek',opomba:'',artikli:[],_id:null};
+  renderNarocilnicaDetail();
+  showPanel('narocilnica-detail');
+}
+
+function renderNarocilnicaDetail(){
+  const g=id=>document.getElementById(id);
+  const n=aktivnaNarocilnica;
+  if(g('narc-stevilka'))g('narc-stevilka').value=n.stevilka||'';
+  if(g('narc-dobavitelj'))g('narc-dobavitelj').value=n.dobavitelj||'';
+  if(g('narc-datum'))g('narc-datum').value=n.datum||'';
+  if(g('narc-datum-dobave'))g('narc-datum-dobave').value=n.datum_dobave||'';
+  if(g('narc-status'))g('narc-status').value=n.status||'osnutek';
+  if(g('narc-opomba'))g('narc-opomba').value=n.opomba||'';
+  if(g('narc-title'))g('narc-title').textContent=n.stevilka||'Narocilnica';
+  if(g('narc-sub'))g('narc-sub').textContent=n.nalog_stevilka?`Nalog: ${n.nalog_stevilka}`:' ';
+  if(g('narc-nalog-info'))g('narc-nalog-info').textContent=n.nalog_stevilka?`${n.nalog_stevilka} - ${n.nalog_naziv||''}` :'--';
+  renderNarcArtikli();
+}
+
+function renderNarcArtikli(){
+  const body=document.getElementById('narc-artikli-body');if(!body)return;
+  body.innerHTML=(aktivnaNarocilnica.artikli||[]).map((a,i)=>`<tr>
+    <td><input type="text" value="${a.sestavina_ime||''}" onchange="aktivnaNarocilnica.artikli[${i}].sestavina_ime=this.value" style="min-width:170px"></td>
+    <td><input type="number" value="${a.kolicina||0}" class="inp-blue" onchange="aktivnaNarocilnica.artikli[${i}].kolicina=+this.value" min="0" step="0.001"></td>
+    <td><select onchange="aktivnaNarocilnica.artikli[${i}].enota=this.value" style="max-width:65px;font-size:12px">
+      <option${(a.enota||'kg')==='kg'?' selected':''}>kg</option>
+      <option${a.enota==='l'?' selected':''}>l</option>
+      <option${a.enota==='kos'?' selected':''}>kos</option>
+    </select></td>
+    <td><input type="text" value="${a.dobavitelj||''}" onchange="aktivnaNarocilnica.artikli[${i}].dobavitelj=this.value"></td>
+    <td><input type="number" value="${a.cena_enoto||''}" class="inp-blue" onchange="aktivnaNarocilnica.artikli[${i}].cena_enoto=+this.value" min="0" step="0.001" placeholder="0.000"></td>
+    <td class="td-mono">${f2((a.kolicina||0)*(a.cena_enoto||0))} e</td>
+    <td><select onchange="aktivnaNarocilnica.artikli[${i}].tip=this.value" style="font-size:12px;max-width:100px">
+      <option value="nalog"${a.tip==='nalog'?' selected':''}>Za nalog</option>
+      <option value="skupna"${a.tip==='skupna'?' selected':''}>Skupna zaloga</option>
+      <option value="stranka"${a.tip==='stranka'?' selected':''}>Dostavlja stranka</option>
+    </select></td>
+    <td><button class="btn btn-del" onclick="aktivnaNarocilnica.artikli.splice(${i},1);renderNarcArtikli()">X</button></td>
+  </tr>`).join('');
+}
+
+function addNarcArtikel(){
+  aktivnaNarocilnica.artikli.push({sestavina_ime:'',kolicina:0,enota:'kg',dobavitelj:'',cena_enoto:0,skupaj:0,tip:'nalog'});
+  renderNarcArtikli();
+}
+
+async function shraniNarocilnico(){
+  const g=id=>document.getElementById(id);
+  const obj={stevilka:g('narc-stevilka')?.value||aktivnaNarocilnica.stevilka,
+    delovni_nalog_id:aktivnaNarocilnica.nalog_id||null,dobavitelj:g('narc-dobavitelj')?.value||'',
+    datum:g('narc-datum')?.value||'',datum_dobave:g('narc-datum-dobave')?.value||null,
+    status:g('narc-status')?.value||'osnutek',opomba:g('narc-opomba')?.value||'',
+    artikli:aktivnaNarocilnica.artikli,created_by:currentUser?.id};
+  let error;
+  if(aktivnaNarocilnica._id){({error}=await sb.from('narocilnice').update(obj).eq('id',aktivnaNarocilnica._id));}
+  else{const res=await sb.from('narocilnice').insert({...obj,created_at:new Date().toISOString()}).select().single();error=res.error;if(!error)aktivnaNarocilnica._id=res.data.id;}
+  if(error){notif('Napaka: '+error.message,3500);return;}
+  notif('Narocilnica shranjena');await loadNarocilnice();
+}
+
+async function odpriNarocilnico(id){
+  const{data}=await sb.from('narocilnice').select('*,delovni_nalogi(stevilka,naziv)').eq('id',id).single();
+  if(!data)return;
+  aktivnaNarocilnica={...data,_id:id,nalog_stevilka:data.delovni_nalogi?.stevilka,nalog_naziv:data.delovni_nalogi?.naziv};
+  renderNarocilnicaDetail();showPanel('narocilnica-detail');
+}
+
+async function deleteNarocilnica(id){
+  if(!confirm('Izbrisati narocilnico?'))return;
+  await sb.from('narocilnice').delete().eq('id',id);
+  notif('Izbrisano');await loadNarocilnice();
+}
+
+function izvozNarocilnicaExcel(){
+  const n=aktivnaNarocilnica;
+  const rows=[['NAROCILNICA','','','','','',''],['Stevilka:',n.stevilka,'','','','',''],
+    ['Dobavitelj:',n.dobavitelj||'','','','','',''],['Datum:',n.datum||'','','','','',''],
+    ['Nalog:',n.nalog_stevilka||'','','','','',''],['','','','','','',''],
+    ['Sestavina','Kolicina','Enota','Dobavitelj','Cena/enoto','Skupaj','Tip'],
+    ...(n.artikli||[]).map(a=>[a.sestavina_ime,a.kolicina,a.enota,a.dobavitelj||'',a.cena_enoto||'',f2((a.kolicina||0)*(a.cena_enoto||0)),a.tip])];
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=[{wch:30},{wch:12},{wch:8},{wch:20},{wch:15},{wch:12},{wch:14}];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Narocilnica');
+  XLSX.writeFile(wb,`narocilnica_${n.stevilka||'xxx'}.xlsx`);notif('Excel izvozeno');
+}
+
+// ── IZDAJNICE ─────────────────────────────────────
+let izdajniceData=[];
+let aktivnaIzdajnica={stevilka:'',nalog_id:null,datum:'',izdal:'',prevzel:'',opomba:'',artikli:[],_id:null};
+
+async function loadIzdajnice(){
+  const{data}=await sb.from('izdajnice').select('*,delovni_nalogi(stevilka,naziv)').order('created_at',{ascending:false});
+  izdajniceData=data||[];renderIzdajnice();
+}
+
+function renderIzdajnice(){
+  const el=document.getElementById('izdajnice-lista');if(!el)return;
+  if(!izdajniceData.length){el.innerHTML='<div class="empty">Ni izdajnic.</div>';return;}
+  const statusMap={osnutek:'badge-gray',potrjena:'badge-blue',izdano:'badge-green'};
+  el.innerHTML=izdajniceData.map(i=>`
+    <div class="card" style="margin-bottom:.875rem">
+      <div style="padding:.875rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-weight:500;font-size:14px">${i.stevilka} <span class="text-sm">Nalog: ${i.delovni_nalogi?.stevilka||'-'}</span></div>
+          <div class="text-sm">${i.datum||'-'} Izdal: ${i.izdal||'-'} ${(i.artikli||[]).length} artiklov</div>
+        </div>
+        <div class="flex-gap">
+          <span class="badge ${statusMap[i.status]||'badge-gray'}">${i.status}</span>
+          <button class="btn btn-sm" onclick="odpriIzdajnico('${i.id}')">Odpri</button>
+          <button class="btn btn-del" onclick="deleteIzdajnica('${i.id}')">X</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+async function ustvariIzdajnicoIzNaloga(nalogId){
+  const{data:nalog}=await sb.from('delovni_nalogi').select('*').eq('id',nalogId).single();
+  if(!nalog){notif('Nalog ni najden',2500);return;}
+  const leto=new Date().getFullYear();
+  const{count}=await sb.from('izdajnice').select('*',{count:'exact',head:true});
+  const stevilka=`IZD-${leto}-${String((count||0)+1).padStart(3,'0')}`;
+  const sestavine=nalog.sestavine_coa||[];
+  const artikli=[];
+  for(const s of sestavine){
+    const cid=s.sestavina_id||null;
+    const{data:loti}=await sb.from('zaloga').select('*').eq('status','aktivna')
+      .or(cid?`sestavina_id.eq.${cid},sestavina_ime.ilike.%${s.ime||''}%`:`sestavina_ime.ilike.%${s.ime||''}%`)
+      .order('expiry_date',{ascending:true});
+    const potrebnoKg=+(s.kg||0);let preostalo=potrebnoKg;
+    (loti||[]).forEach(lot=>{
+      if(preostalo<=0)return;
+      const izd=Math.min(lot.kolicina,preostalo);
+      artikli.push({zaloga_id:lot.id,sestavina_ime:lot.sestavina_ime,lot:lot.lot||'',
+        razdelek_id:lot.razdelek_id||null,na_zalogi:lot.kolicina,potrebno_kg:potrebnoKg,
+        kolicina_izdana:+izd.toFixed(4),expiry_date:lot.expiry_date||'',enota:lot.enota||'kg'});
+      preostalo-=izd;
+    });
+    if(preostalo>0.001)artikli.push({zaloga_id:null,sestavina_ime:s.ime||'?',lot:'-- NI NA ZALOGI --',
+      razdelek_id:null,na_zalogi:0,potrebno_kg:potrebnoKg,kolicina_izdana:0,expiry_date:'',enota:'kg',_manjka:preostalo});
+  }
+  aktivnaIzdajnica={stevilka,nalog_id:nalogId,nalog_stevilka:nalog.stevilka,nalog_naziv:nalog.naziv,
+    datum:new Date().toISOString().slice(0,10),izdal:'',prevzel:'',opomba:'',artikli,_id:null};
+  renderIzdajnicaDetail();showPanel('izdajnica-detail');
+}
+
+function renderIzdajnicaDetail(){
+  const g=id=>document.getElementById(id);const izd=aktivnaIzdajnica;
+  if(g('izd-stevilka'))g('izd-stevilka').value=izd.stevilka||'';
+  if(g('izd-datum'))g('izd-datum').value=izd.datum||'';
+  if(g('izd-izdal'))g('izd-izdal').value=izd.izdal||'';
+  if(g('izd-prevzel'))g('izd-prevzel').value=izd.prevzel||'';
+  if(g('izd-opomba'))g('izd-opomba').value=izd.opomba||'';
+  if(g('izd-title'))g('izd-title').textContent=izd.stevilka||'Izdajnica';
+  if(g('izd-sub'))g('izd-sub').textContent=izd.nalog_stevilka?`Nalog: ${izd.nalog_stevilka}`:'';
+  if(g('izd-nalog-info'))g('izd-nalog-info').textContent=izd.nalog_stevilka?`${izd.nalog_stevilka} - ${izd.nalog_naziv||''}` :'--';
+  const body=g('izd-artikli-body');if(!body)return;
+  body.innerHTML=(izd.artikli||[]).map((a,i)=>`<tr style="${a._manjka?'background:var(--danger-light)':''}">
+    <td style="font-weight:500">${a.sestavina_ime}${a._manjka?`<div class="text-sm" style="color:var(--danger)">Manjka ${f4(a._manjka)} kg</div>`:''}</td>
+    <td style="font-family:var(--mono);font-size:12px">${a.lot}</td>
+    <td style="font-size:12px">${razdelkiData.find(r=>r.id===a.razdelek_id)?.ime||'--'}</td>
+    <td class="td-mono">${f4(a.na_zalogi)} ${a.enota}</td>
+    <td class="td-mono">${f4(a.potrebno_kg)} ${a.enota}</td>
+    <td><input type="number" value="${a.kolicina_izdana}" class="inp-blue" min="0" step="0.001" max="${a.na_zalogi}"
+      onchange="aktivnaIzdajnica.artikli[${i}].kolicina_izdana=+this.value" style="max-width:100px;font-family:var(--mono)"></td>
+    <td style="font-size:12px">${a.expiry_date||'--'}</td>
+  </tr>`).join('');
+}
+
+async function odpriIzdajnico(id){
+  const{data}=await sb.from('izdajnice').select('*,delovni_nalogi(stevilka,naziv)').eq('id',id).single();
+  if(!data)return;
+  aktivnaIzdajnica={...data,_id:id,nalog_stevilka:data.delovni_nalogi?.stevilka,nalog_naziv:data.delovni_nalogi?.naziv};
+  renderIzdajnicaDetail();showPanel('izdajnica-detail');
+}
+
+async function deleteIzdajnica(id){
+  if(!confirm('Izbrisati izdajnico?'))return;
+  await sb.from('izdajnice').delete().eq('id',id);notif('Izbrisano');await loadIzdajnice();
+}
+
+async function potrdiIzdajnico(){
+  const g=id=>document.getElementById(id);
+  const obj={stevilka:g('izd-stevilka')?.value||aktivnaIzdajnica.stevilka,
+    delovni_nalog_id:aktivnaIzdajnica.nalog_id||null,datum:g('izd-datum')?.value||'',
+    izdal:g('izd-izdal')?.value||'',prevzel:g('izd-prevzel')?.value||'',
+    opomba:g('izd-opomba')?.value||'',artikli:aktivnaIzdajnica.artikli,
+    status:'izdano',created_by:currentUser?.id};
+  for(const a of aktivnaIzdajnica.artikli){
+    if(!a.zaloga_id||!a.kolicina_izdana)continue;
+    const{data:lot}=await sb.from('zaloga').select('kolicina').eq('id',a.zaloga_id).single();
+    if(!lot)continue;
+    const novaKol=+(lot.kolicina-a.kolicina_izdana).toFixed(6);
+    await sb.from('zaloga').update({kolicina:Math.max(0,novaKol),status:novaKol<=0?'porabljena':'aktivna'}).eq('id',a.zaloga_id);
+  }
+  let error;
+  if(aktivnaIzdajnica._id){({error}=await sb.from('izdajnice').update(obj).eq('id',aktivnaIzdajnica._id));}
+  else{const res=await sb.from('izdajnice').insert({...obj,created_at:new Date().toISOString()}).select().single();error=res.error;if(!error)aktivnaIzdajnica._id=res.data.id;}
+  if(error){notif('Napaka: '+error.message,3500);return;}
+  if(aktivnaIzdajnica.nalog_id)await sb.from('delovni_nalogi').update({status:'produkcija',sestavine_status:'izdano'}).eq('id',aktivnaIzdajnica.nalog_id);
+  notif('Izdajnica potrjena - zaloga posodobljena');
+  showPanel('izdajnice');loadIzdajnice();loadZaloga();
+}
+
+// ── POVRATNICE ────────────────────────────────────
+let povratniceData=[];
+let aktivnaPovratnica={stevilka:'',nalog_id:null,izdajnica_id:null,datum:'',vrnil:'',prejel:'',opomba:'',artikli:[],_id:null};
+
+async function loadPovratnice(){
+  const{data}=await sb.from('povratnice').select('*,delovni_nalogi(stevilka,naziv)').order('created_at',{ascending:false});
+  povratniceData=data||[];renderPovratnice();
+}
+
+function renderPovratnice(){
+  const el=document.getElementById('povratnice-lista');if(!el)return;
+  if(!povratniceData.length){el.innerHTML='<div class="empty">Ni povratnic.</div>';return;}
+  el.innerHTML=povratniceData.map(p=>`
+    <div class="card" style="margin-bottom:.875rem">
+      <div style="padding:.875rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-weight:500;font-size:14px">${p.stevilka} <span class="text-sm">Nalog: ${p.delovni_nalogi?.stevilka||'-'}</span></div>
+          <div class="text-sm">${p.datum||'-'} Vrnil: ${p.vrnil||'-'}</div>
+        </div>
+        <div class="flex-gap">
+          <span class="badge ${p.status==='potrjena'?'badge-green':'badge-gray'}">${p.status||'osnutek'}</span>
+          <button class="btn btn-sm" onclick="odpriPovratnico('${p.id}')">Odpri</button>
+          <button class="btn btn-del" onclick="deletePovratnica('${p.id}')">X</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+async function ustvariPovratnicoIzIzdajnice(izdajnicaId){
+  const{data:izd}=await sb.from('izdajnice').select('*,delovni_nalogi(stevilka,naziv)').eq('id',izdajnicaId).single();
+  if(!izd)return;
+  const leto=new Date().getFullYear();
+  const{count}=await sb.from('povratnice').select('*',{count:'exact',head:true});
+  const stevilka=`POV-${leto}-${String((count||0)+1).padStart(3,'0')}`;
+  const artikli=(izd.artikli||[]).filter(a=>a.zaloga_id&&a.kolicina_izdana>0).map(a=>({
+    sestavina_ime:a.sestavina_ime,lot_original:a.lot,zaloga_id:a.zaloga_id,
+    kolicina_vrnjeno:0,razdelek_id:a.razdelek_id||null,expiry_date:a.expiry_date||'',enota:a.enota||'kg'}));
+  aktivnaPovratnica={stevilka,nalog_id:izd.delovni_nalog_id,nalog_stevilka:izd.delovni_nalogi?.stevilka,
+    nalog_naziv:izd.delovni_nalogi?.naziv,izdajnica_id:izdajnicaId,
+    datum:new Date().toISOString().slice(0,10),vrnil:'',prejel:'',opomba:'',artikli,_id:null};
+  renderPovratnicaDetail();showPanel('povratnica-detail');
+}
+
+function renderPovratnicaDetail(){
+  const g=id=>document.getElementById(id);const p=aktivnaPovratnica;
+  if(g('pov-stevilka'))g('pov-stevilka').value=p.stevilka||'';
+  if(g('pov-datum'))g('pov-datum').value=p.datum||'';
+  if(g('pov-vrnil'))g('pov-vrnil').value=p.vrnil||'';
+  if(g('pov-prejel'))g('pov-prejel').value=p.prejel||'';
+  if(g('pov-opomba'))g('pov-opomba').value=p.opomba||'';
+  if(g('pov-title'))g('pov-title').textContent=p.stevilka||'Povratnica';
+  if(g('pov-sub'))g('pov-sub').textContent=p.nalog_stevilka?`Nalog: ${p.nalog_stevilka}`:'';
+  if(g('pov-nalog-info'))g('pov-nalog-info').textContent=p.nalog_stevilka?`${p.nalog_stevilka} - ${p.nalog_naziv||''}` :'--';
+  renderPovArtikli();
+}
+
+function renderPovArtikli(){
+  const body=document.getElementById('pov-artikli-body');if(!body)return;
+  body.innerHTML=(aktivnaPovratnica.artikli||[]).map((a,i)=>`<tr>
+    <td style="font-weight:500">${a.sestavina_ime}</td>
+    <td style="font-family:var(--mono);font-size:12px">${a.lot_original||'--'}</td>
+    <td><input type="number" value="${a.kolicina_vrnjeno||0}" class="inp-blue" min="0" step="0.001"
+      onchange="aktivnaPovratnica.artikli[${i}].kolicina_vrnjeno=+this.value" style="max-width:100px;font-family:var(--mono)"></td>
+    <td><select onchange="aktivnaPovratnica.artikli[${i}].razdelek_id=this.value" style="font-size:12px">
+      <option value="">-- Razdelek --</option>
+      ${razdelkiData.map(r=>`<option value="${r.id}"${r.id===a.razdelek_id?' selected':''}>${r.ime}</option>`).join('')}
+    </select></td>
+    <td style="font-size:12px">${a.expiry_date||'--'}</td>
+  </tr>`).join('');
+}
+
+function addPovArtikel(){
+  aktivnaPovratnica.artikli.push({sestavina_ime:'',lot_original:'',kolicina_vrnjeno:0,razdelek_id:null,expiry_date:'',enota:'kg'});
+  renderPovArtikli();
+}
+
+async function odpriPovratnico(id){
+  const{data}=await sb.from('povratnice').select('*,delovni_nalogi(stevilka,naziv)').eq('id',id).single();
+  if(!data)return;
+  aktivnaPovratnica={...data,_id:id,nalog_stevilka:data.delovni_nalogi?.stevilka,nalog_naziv:data.delovni_nalogi?.naziv};
+  renderPovratnicaDetail();showPanel('povratnica-detail');
+}
+
+async function deletePovratnica(id){
+  if(!confirm('Izbrisati povratnico?'))return;
+  await sb.from('povratnice').delete().eq('id',id);notif('Izbrisano');await loadPovratnice();
+}
+
+async function potrdiPovratnico(){
+  const g=id=>document.getElementById(id);
+  const obj={stevilka:g('pov-stevilka')?.value||aktivnaPovratnica.stevilka,
+    delovni_nalog_id:aktivnaPovratnica.nalog_id||null,izdajnica_id:aktivnaPovratnica.izdajnica_id||null,
+    datum:g('pov-datum')?.value||'',vrnil:g('pov-vrnil')?.value||'',prejel:g('pov-prejel')?.value||'',
+    opomba:g('pov-opomba')?.value||'',artikli:aktivnaPovratnica.artikli,status:'potrjena',created_by:currentUser?.id};
+  for(const a of aktivnaPovratnica.artikli){
+    if(!a.kolicina_vrnjeno||a.kolicina_vrnjeno<=0)continue;
+    if(a.zaloga_id){
+      const{data:lot}=await sb.from('zaloga').select('kolicina').eq('id',a.zaloga_id).single();
+      if(lot)await sb.from('zaloga').update({kolicina:+(lot.kolicina+a.kolicina_vrnjeno).toFixed(6),status:'aktivna',razdelek_id:a.razdelek_id||lot.razdelek_id}).eq('id',a.zaloga_id);
+    } else {
+      await sb.from('zaloga').insert({sestavina_ime:a.sestavina_ime,lot:(a.lot_original||'')+'_POV',enota:a.enota||'kg',
+        kolicina:+a.kolicina_vrnjeno,expiry_date:a.expiry_date||null,razdelek_id:a.razdelek_id||null,status:'aktivna',opomba:'Vrnjena iz mesalnice'});
+    }
+  }
+  let error;
+  if(aktivnaPovratnica._id){({error}=await sb.from('povratnice').update(obj).eq('id',aktivnaPovratnica._id));}
+  else{const res=await sb.from('povratnice').insert({...obj,created_at:new Date().toISOString()}).select().single();error=res.error;}
+  if(error){notif('Napaka: '+error.message,3500);return;}
+  notif('Povratnica potrjena - zaloga posodobljena');
+  showPanel('povratnice');loadPovratnice();loadZaloga();
 }
 
 // ── INIT ──────────────────────────────────────────
