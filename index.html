@@ -252,6 +252,15 @@ tr:hover td{background:var(--surface2)}
         <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M11 2a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1h6z"/></svg>
         Rezultat
       </div>
+      <div class="nav-section" style="margin-top:8px">Ponudbe</div>
+      <div class="nav-item" onclick="showPanel('ponudbe');loadPonudbe()">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M14.5 3a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5h-13a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h13zm-13-1A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h13a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 14.5 2h-13z"/></svg>
+        Vse ponudbe
+      </div>
+      <div class="nav-item" onclick="showPanel('nova-ponudba');initNovaPonudba()">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2z"/></svg>
+        Nova ponudba
+      </div>
       <div class="nav-section" style="margin-top:8px">Produkcija</div>
       <div class="nav-item" onclick="showPanel('nalogi');loadNalogi()">
         <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M5 4a.5.5 0 0 0 0 1h6a.5.5 0 0 0 0-1H5z"/><path d="M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2z"/></svg>
@@ -953,6 +962,119 @@ tr:hover td{background:var(--surface2)}
           <div class="card-header"><span class="card-title">Povzetek prevzema</span></div>
           <div class="card-body">
             <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem" id="prv-povzetek-metrics"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PONUDBE -->
+      <div id="panel-ponudbe" class="panel">
+        <div class="flex-between">
+          <div><div class="page-title">Ponudbe</div><div class="page-sub">Evidenca vseh ponudb strankam</div></div>
+          <button class="btn btn-sm btn-primary" onclick="showPanel('nova-ponudba');initNovaPonudba()">+ Nova ponudba</button>
+        </div>
+        <div id="ponudbe-lista"></div>
+      </div>
+
+      <!-- NOVA PONUDBA -->
+      <div id="panel-nova-ponudba" class="panel">
+        <div class="flex-between">
+          <div>
+            <div class="page-title" id="np-title">Nova ponudba</div>
+            <div class="page-sub" id="np-sub">Uvozite formulacijo stranke → kalkulacija → Excel za dobavitelje → ponudba</div>
+          </div>
+          <div class="flex-gap">
+            <button class="btn btn-sm" onclick="showPanel('ponudbe');loadPonudbe()">← Nazaj</button>
+            <button class="btn btn-sm" onclick="izvozExcelDobavitelji()" id="np-excel-btn" style="display:none">📊 Excel za dobavitelje</button>
+            <button class="btn btn-sm btn-primary" onclick="shraniPonudbo()" id="np-shrani-btn" style="display:none">💾 Shrani ponudbo</button>
+          </div>
+        </div>
+
+        <!-- Osnovni podatki -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">Osnovni podatki</span></div>
+          <div class="card-body">
+            <div class="form-grid" style="max-width:580px">
+              <label class="form-label">Stranka</label>
+              <select id="np-stranka" class="inp-blue" style="max-width:280px"></select>
+              <label class="form-label">Naziv ponudbe</label>
+              <input type="text" id="np-naziv" class="inp-blue" placeholder="npr. OmegaCaps 1000mg ponudba">
+              <label class="form-label">Številka ponudbe</label>
+              <input type="text" id="np-stevilka" class="inp-blue" style="max-width:180px;font-family:var(--mono)">
+              <label class="form-label">Veljavnost ponudbe</label>
+              <input type="date" id="np-veljavnost" class="inp-blue" style="max-width:180px">
+              <label class="form-label">Tip kapsulacije</label>
+              <select id="np-tip" class="inp-blue" style="max-width:180px">
+                <option value="LIQUID">LIQUID CAPS</option>
+                <option value="PRAH">PRAH</option>
+                <option value="DUAL">DUAL</option>
+              </select>
+              <label class="form-label">Stroj</label>
+              <select id="np-stroj" class="inp-blue" style="max-width:260px"></select>
+              <label class="form-label">Marža (%)</label>
+              <input type="number" id="np-marza" class="inp-blue" value="20" min="0" style="max-width:90px">
+            </div>
+          </div>
+        </div>
+
+        <!-- Uvoz formulacije -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Formulacija stranke</span>
+            <span class="text-sm" id="np-form-status" style="color:var(--text3)">— ni naložena</span>
+          </div>
+          <div class="card-body" style="padding:.75rem">
+            <div class="import-zone" onclick="this.querySelector('input').click()">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:block;margin:0 auto 8px;opacity:.4"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+              <div style="font-weight:500;margin-bottom:4px">Naložite formulacijo stranke</div>
+              <div style="font-size:11px;color:var(--text3)">PDF, Excel (.xlsx) ali CSV — Claude prebere sestavine in mg/kapsulo</div>
+              <input type="file" accept=".pdf,.xlsx,.xls,.csv" style="display:none" onchange="uvozFormulacijoPonudba(this)">
+            </div>
+          </div>
+        </div>
+
+        <!-- Sestavine ponudbe -->
+        <div id="np-sestavine-card" style="display:none" class="card">
+          <div class="card-header">
+            <span class="card-title">Sestavine</span>
+            <button class="btn btn-sm" onclick="addNPSestavina()">+ Dodaj ročno</button>
+          </div>
+          <div class="card-body" style="padding:.75rem">
+            <div class="tbl-wrap">
+            <table>
+              <thead><tr>
+                <th style="min-width:200px">Sestavina</th>
+                <th style="min-width:100px">mg/kapsulo</th>
+                <th style="min-width:80px">Enota</th>
+                <th style="min-width:130px">Dobavitelj</th>
+                <th style="min-width:120px">Cena/kg (€)</th>
+                <th style="min-width:80px">Iz cenika</th>
+                <th style="width:36px"></th>
+              </tr></thead>
+              <tbody id="np-sestavine-body"></tbody>
+            </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Količine za kalkulacijo -->
+        <div id="np-kolicine-card" style="display:none" class="card">
+          <div class="card-header">
+            <span class="card-title">Količine za kalkulacijo</span>
+            <button class="btn btn-sm" onclick="addNPKolicina()">+ Dodaj količino</button>
+          </div>
+          <div class="card-body">
+            <div id="np-kolicine-rows"></div>
+          </div>
+        </div>
+
+        <!-- Rezultat kalkulacije -->
+        <div id="np-rezultat-card" style="display:none" class="card">
+          <div class="card-header">
+            <span class="card-title">Kalkulacija ponudbe</span>
+            <button class="btn btn-sm btn-primary" onclick="izracunajPonudbo()">▶ Izračunaj</button>
+          </div>
+          <div class="card-body" style="padding:.75rem">
+            <div id="np-rezultat-wrap"></div>
           </div>
         </div>
       </div>
@@ -3692,6 +3814,442 @@ function matchScore(a, b){
   const aw=al.split(/\s+/), bw=bl.split(/\s+/);
   const skupne=aw.filter(w=>w.length>3&&bw.some(bww=>bww.includes(w)||w.includes(bww)));
   return skupne.length/Math.max(aw.length,bw.length);
+}
+
+// ── PONUDBE ───────────────────────────────────────
+
+let ponudbeData = [];
+let aktivnaPonudba = {
+  stevilka:'', naziv:'', stranka_id:null, tip:'LIQUID',
+  stroj_idx:0, marza:20, veljavnost:'',
+  sestavine:[], kolicine:[100000,500000,1000000],
+  rezultati:[], status:'osnutek',
+};
+
+async function loadPonudbe(){
+  const{data}=await sb.from('ponudbe').select('*,stranke(podjetje)').order('created_at',{ascending:false}).limit(50);
+  ponudbeData=data||[];
+  renderPonudbe();
+}
+
+function renderPonudbe(){
+  const el=document.getElementById('ponudbe-lista');if(!el)return;
+  if(!ponudbeData.length){el.innerHTML='<div class="empty">Ni ponudb. Ustvarite prvo ponudbo.</div>';return;}
+  el.innerHTML=ponudbeData.map(p=>`
+    <div class="card" style="margin-bottom:.875rem">
+      <div style="padding:.875rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-weight:500;font-size:14px">${p.naziv||'—'} <span class="badge badge-blue" style="font-family:var(--mono);font-size:10px">${p.stevilka||''}</span></div>
+          <div class="text-sm" style="margin-top:3px">
+            ${p.stranke?.podjetje||'—'} · ${p.tip||'—'} ·
+            ${p.sestavine?.length||0} sestavin ·
+            ${new Date(p.created_at).toLocaleDateString('sl-SI')}
+            ${p.veljavnost?` · Veljavno do: ${p.veljavnost}`:''}
+          </div>
+        </div>
+        <div class="flex-gap">
+          <span class="badge ${p.status==='poslana'?'badge-green':p.status==='sprejeta'?'badge-blue':'badge-gray'}">${p.status||'osnutek'}</span>
+          <button class="btn btn-sm" onclick="odpriPonudbo('${p.id}')">Odpri</button>
+          <button class="btn btn-sm" onclick="izvozExcelDobaviteljiById('${p.id}')">📊 Excel</button>
+          <button class="btn btn-del" onclick="deletePonudba('${p.id}')">✕</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function initNovaPonudba(){
+  const leto=new Date().getFullYear();
+  const st=String((ponudbeData.length||0)+1).padStart(3,'0');
+  aktivnaPonudba={
+    stevilka:`PON-${leto}-${st}`, naziv:'', stranka_id:null,
+    tip:'LIQUID', stroj_idx:0, marza:20, veljavnost:'',
+    sestavine:[], kolicine:[100000,500000,1000000], rezultati:[], status:'osnutek',
+  };
+  const g=id=>document.getElementById(id);
+  if(g('np-stevilka'))g('np-stevilka').value=aktivnaPonudba.stevilka;
+  if(g('np-naziv'))g('np-naziv').value='';
+  if(g('np-marza'))g('np-marza').value=20;
+  if(g('np-title'))g('np-title').textContent='Nova ponudba';
+  if(g('np-form-status'))g('np-form-status').textContent='— ni naložena';
+  if(g('np-sestavine-card'))g('np-sestavine-card').style.display='none';
+  if(g('np-kolicine-card'))g('np-kolicine-card').style.display='none';
+  if(g('np-rezultat-card'))g('np-rezultat-card').style.display='none';
+  if(g('np-excel-btn'))g('np-excel-btn').style.display='none';
+  if(g('np-shrani-btn'))g('np-shrani-btn').style.display='none';
+
+  // Nastavi datum veljavnosti = danes + 30 dni
+  const vel=new Date(Date.now()+30*24*3600*1000).toISOString().slice(0,10);
+  if(g('np-veljavnost'))g('np-veljavnost').value=vel;
+
+  // Sync stranka select
+  const ssel=g('np-stranka');
+  if(ssel)ssel.innerHTML='<option value="">— Izberi stranko —</option>'+
+    (strankeData||[]).map(s=>`<option value="${s.id}">${s.podjetje}</option>`).join('');
+
+  // Sync stroj select
+  const stsel=g('np-stroj');
+  if(stsel)stsel.innerHTML=(strojData||[]).map((s,i)=>`<option value="${i}">${s.ime} — ${s.tip}</option>`).join('');
+}
+
+async function uvozFormulacijoPonudba(input){
+  const file=input.files[0];if(!file)return;
+  const statusEl=document.getElementById('np-form-status');
+  if(statusEl)statusEl.innerHTML='<span style="color:var(--warn)">⟳ Claude bere formulacijo…</span>';
+
+  try{
+    const ext=file.name.split('.').pop().toLowerCase();
+    let base64='', vsebina='', isPdf=ext==='pdf';
+
+    if(isPdf||ext==='xlsx'||ext==='xls'){
+      base64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file);});
+    } else {
+      vsebina=await file.text();
+    }
+
+    const prompt=`Izlušči sestavine formulacije iz dokumenta in vrni SAMO JSON:
+{"naziv_izdelka":"","sestavine":[{"ime":"","kolicina":0,"enota":"mg","del":"","opomba":""}]}
+PRAVILA: kolicina = vrednost iz "mg per capsule" ali "mg/cap" ali "mg". Vrni SAMO JSON.`;
+
+    let resp;
+    if(isPdf){
+      resp=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:4000,
+          messages:[{role:'user',content:[{type:'document',source:{type:'base64',media_type:'application/pdf',data:base64}},{type:'text',text:prompt}]}]})});
+    } else if(ext==='xlsx'||ext==='xls'){
+      const buffer=await file.arrayBuffer();
+      const wb=XLSX.read(buffer,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      vsebina=JSON.stringify(XLSX.utils.sheet_to_json(ws,{defval:''}));
+      resp=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:4000,messages:[{role:'user',content:`${prompt}\n\nExcel podatki:\n${vsebina}`}]})});
+    } else {
+      resp=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:4000,messages:[{role:'user',content:`${prompt}\n\n${vsebina}`}]})});
+    }
+
+    const data=await resp.json();
+    let text=(data.content?.map(c=>c.text||'').join('')||'').replace(/```json|```/g,'').trim();
+    let parsed;
+    try{ parsed=JSON.parse(text); }
+    catch(e){
+      const m=text.match(/\{[\s\S]*\}/);
+      if(m){ try{ parsed=JSON.parse(m[0]); }catch(e2){ throw new Error('Napaka pri branju formulacije.'); } }
+      else throw new Error('Napaka pri branju formulacije.');
+    }
+
+    // Nastavi naziv
+    if(parsed.naziv_izdelka){
+      const nEl=document.getElementById('np-naziv');
+      if(nEl&&!nEl.value)nEl.value=parsed.naziv_izdelka;
+    }
+
+    // Poveži sestavine s cenikov
+    aktivnaPonudba.sestavine=(parsed.sestavine||[]).map(s=>{
+      let best=null,score=0;
+      (cenikSestavineData||[]).forEach(c=>{
+        const sc=matchScore(s.ime,c.ime);
+        if(sc>score){score=sc;best=c;}
+      });
+      const cena=best&&score>0.3?getCenikCena(best,100):0;
+      return{
+        ime:s.ime, kolicina:+s.kolicina||0, enota:s.enota||'mg', del:s.del||'',
+        opomba:s.opomba||'',
+        cenik_id:score>0.3?best?.id:null,
+        cenik_ime:score>0.3?best?.ime:null,
+        cena_kg:cena,
+        dobavitelj:best?.dobavitelj||'',
+        iz_cenika:score>0.3,
+      };
+    });
+
+    renderNPSestavine();
+    renderNPKolicine();
+
+    const g=id=>document.getElementById(id);
+    if(g('np-sestavine-card'))g('np-sestavine-card').style.display='block';
+    if(g('np-kolicine-card'))g('np-kolicine-card').style.display='block';
+    if(g('np-rezultat-card'))g('np-rezultat-card').style.display='block';
+    if(g('np-excel-btn'))g('np-excel-btn').style.display='block';
+    if(g('np-shrani-btn'))g('np-shrani-btn').style.display='block';
+
+    const ujemanja=aktivnaPonudba.sestavine.filter(s=>s.iz_cenika).length;
+    if(statusEl)statusEl.innerHTML=`<span style="color:var(--accent-text)">✓ ${aktivnaPonudba.sestavine.length} sestavin · ${ujemanja} v ceniku</span>`;
+
+  }catch(err){
+    if(statusEl)statusEl.innerHTML=`<span style="color:var(--danger)">⚠ ${err.message}</span>`;
+  }
+  input.value='';
+}
+
+function renderNPSestavine(){
+  const body=document.getElementById('np-sestavine-body');if(!body)return;
+  body.innerHTML=aktivnaPonudba.sestavine.map((s,i)=>`<tr>
+    <td>
+      <input type="text" value="${s.ime}" onchange="aktivnaPonudba.sestavine[${i}].ime=this.value" style="min-width:180px">
+      ${s.cenik_ime&&s.cenik_ime!==s.ime?`<div style="font-size:10px;color:var(--info)">→ ${s.cenik_ime}</div>`:''}
+    </td>
+    <td>
+      <div style="display:flex;gap:4px;align-items:center">
+        <input type="number" value="${s.kolicina}" class="inp-blue" onchange="aktivnaPonudba.sestavine[${i}].kolicina=+this.value" min="0" step="0.001" style="max-width:90px">
+      </div>
+    </td>
+    <td>
+      <select onchange="aktivnaPonudba.sestavine[${i}].enota=this.value" style="max-width:65px;font-size:12px">
+        <option${s.enota==='mg'?' selected':''}>mg</option>
+        <option${s.enota==='ml'?' selected':''}>ml</option>
+      </select>
+    </td>
+    <td><input type="text" value="${s.dobavitelj||''}" onchange="aktivnaPonudba.sestavine[${i}].dobavitelj=this.value" placeholder="—" style="min-width:120px"></td>
+    <td>
+      <div style="display:flex;gap:4px;align-items:center">
+        <input type="number" value="${s.cena_kg||''}" class="inp-blue" onchange="aktivnaPonudba.sestavine[${i}].cena_kg=+this.value" min="0" step="0.01" placeholder="0.00" style="max-width:100px;font-family:var(--mono)">
+        <span class="text-sm">€/kg</span>
+      </div>
+    </td>
+    <td>${s.iz_cenika?'<span class="badge badge-green" style="font-size:10px">✓ Cenik</span>':'<span class="badge badge-warn" style="font-size:10px">Ročno</span>'}</td>
+    <td><button class="btn btn-del" onclick="aktivnaPonudba.sestavine.splice(${i},1);renderNPSestavine()">✕</button></td>
+  </tr>`).join('');
+}
+
+function addNPSestavina(){
+  aktivnaPonudba.sestavine.push({ime:'',kolicina:0,enota:'mg',del:'',dobavitelj:'',cena_kg:0,iz_cenika:false});
+  renderNPSestavine();
+  const card=document.getElementById('np-sestavine-card');
+  if(card)card.style.display='block';
+}
+
+function renderNPKolicine(){
+  const el=document.getElementById('np-kolicine-rows');if(!el)return;
+  el.innerHTML=aktivnaPonudba.kolicine.map((k,i)=>`
+    <div class="kol-row">
+      <input type="number" value="${k}" min="1000" step="1000" class="inp-blue text-mono"
+        onchange="aktivnaPonudba.kolicine[${i}]=+this.value" style="max-width:160px">
+      <span class="text-sm">kapsul</span>
+      ${aktivnaPonudba.kolicine.length>1?`<button class="btn btn-del btn-sm" onclick="aktivnaPonudba.kolicine.splice(${i},1);renderNPKolicine()">✕</button>`:''}
+    </div>`).join('');
+}
+
+function addNPKolicina(){
+  aktivnaPonudba.kolicine.push(1000000);
+  renderNPKolicine();
+}
+
+function izracunajPonudbo(){
+  const stroj=strojData[+document.getElementById('np-stroj')?.value||0]||strojData[0];
+  const marza=(+document.getElementById('np-marza')?.value||20)/100;
+  const odpad=0.03;
+
+  aktivnaPonudba.rezultati=aktivnaPonudba.kolicine.map(kol=>{
+    const kolOb=Math.ceil(kol*(1+odpad));
+
+    // Sestavine
+    let sest_skupaj=0;
+    const sest_d=aktivnaPonudba.sestavine.map(s=>{
+      const kol_mg=(s.kolicina||0);
+      const kg=(kol_mg/1e6)*kolOb;
+      const strosek=kg*(s.cena_kg||0);
+      sest_skupaj+=strosek;
+      return{...s, kg, strosek};
+    });
+
+    // Kapsulacija
+    const kaps_cena=stroj?getStrojCena(stroj,kol):0;
+    const kaps_strosek=kaps_cena*kolOb;
+
+    const skupaj=sest_skupaj+kaps_strosek;
+    const marza_val=marza>0?skupaj*(marza/(1-marza)):0;
+    const predlagana=skupaj+marza_val;
+
+    return{kol,kolOb,sest_d,sest_skupaj,kaps_cena,kaps_strosek,skupaj,marza_val,predlagana};
+  });
+
+  renderNPRezultat();
+}
+
+function renderNPRezultat(){
+  const el=document.getElementById('np-rezultat-wrap');if(!el)return;
+  if(!aktivnaPonudba.rezultati.length){el.innerHTML='<div class="text-sm">Kliknite ▶ Izračunaj.</div>';return;}
+
+  // Primerjalna tabela
+  let html=`<div class="tbl-wrap"><table>
+    <thead><tr>
+      <th>Količina</th>
+      <th class="td-right">Sestav. strošek</th>
+      <th class="td-right">Kapsulacija</th>
+      <th class="td-right">Skupaj strošek</th>
+      <th class="td-right">Cena/kos</th>
+      <th class="td-right">Cena/1.000</th>
+      <th class="td-right">Predl. cena</th>
+      <th class="td-right">Marža</th>
+    </tr></thead>
+    <tbody>
+    ${aktivnaPonudba.rezultati.map(r=>`<tr>
+      <td style="font-weight:500;font-family:var(--mono)">${fN(r.kol)}</td>
+      <td class="td-mono">${f2(r.sest_skupaj)} €</td>
+      <td class="td-mono">${f2(r.kaps_strosek)} €</td>
+      <td class="td-mono">${f2(r.skupaj)} €</td>
+      <td class="td-mono">${f4(r.skupaj/r.kol)} €</td>
+      <td class="td-mono">${f2(r.skupaj/r.kol*1000)} €</td>
+      <td class="td-mono" style="color:var(--accent-text);font-weight:500">${f2(r.predlagana)} €</td>
+      <td class="td-mono" style="color:var(--accent-text)">${f2(r.marza_val)} €</td>
+    </tr>`).join('')}
+    </tbody>
+  </table></div>`;
+
+  // Razčlenitev sestavin za vsako količino
+  html += aktivnaPonudba.rezultati.map(r=>`
+    <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">
+      <div style="font-weight:500;margin-bottom:.5rem">${fN(r.kol)} kapsul — razčlenitev</div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Sestavina</th><th>mg/kaps</th><th class="td-right">kg potrebno</th><th class="td-right">Cena/kg</th><th class="td-right">Strošek</th></tr></thead>
+        <tbody>
+          ${r.sest_d.map(s=>`<tr>
+            <td>${s.ime}</td>
+            <td class="td-mono">${s.kolicina} mg</td>
+            <td class="td-mono">${f4(s.kg)} kg</td>
+            <td class="td-mono">${s.cena_kg?f2(s.cena_kg)+' €':'<span class="badge badge-warn" style="font-size:10px">Ni cene</span>'}</td>
+            <td class="td-mono">${s.cena_kg?f2(s.strosek)+' €':'—'}</td>
+          </tr>`).join('')}
+          <tr style="font-weight:500;border-top:2px solid var(--border)">
+            <td colspan="4">Skupaj sestavine</td>
+            <td class="td-mono">${f2(r.sest_skupaj)} €</td>
+          </tr>
+        </tbody>
+      </table></div>
+    </div>`).join('');
+
+  el.innerHTML=html;
+}
+
+function izvozExcelDobavitelji(){
+  if(!aktivnaPonudba.sestavine.length){notif('Ni sestavin za izvoz',2500);return;}
+
+  // Pripravi podatke — ena vrstica na sestavino, stolpci za vsako količino
+  const header=['Sestavina','mg/kapsulo','Enota','Dobavitelj','Cena/kg (€)','Iz cenika'];
+  const kolHeader=aktivnaPonudba.kolicine.map(k=>`Potrebno kg (${fN(k)} kaps)`);
+
+  const rows=aktivnaPonudba.sestavine.map(s=>{
+    const row=[
+      s.ime, s.kolicina, s.enota,
+      s.dobavitelj||'',
+      s.cena_kg||'',
+      s.iz_cenika?'Da':'Ne',
+    ];
+    // Dodaj kg za vsako količino
+    aktivnaPonudba.kolicine.forEach(kol=>{
+      const kolOb=Math.ceil(kol*1.03);
+      const kg=(s.kolicina/1e6)*kolOb;
+      row.push(+kg.toFixed(4));
+    });
+    return row;
+  });
+
+  // Ustvari Excel
+  const ws=XLSX.utils.aoa_to_sheet([[...header,...kolHeader],...rows]);
+  // Stil glave
+  ws['!cols']=[{wch:30},{wch:12},{wch:8},{wch:20},{wch:12},{wch:10},...aktivnaPonudba.kolicine.map(()=>({wch:18}))];
+
+  // Dodaj povpraševanje vrstico
+  const nazPonudba=document.getElementById('np-naziv')?.value||'ponudba';
+  const ws2Data=[
+    ['POVPRAŠEVANJE ZA CENE SESTAVIN','','','','',''],
+    ['Ponudba:',nazPonudba,'','','',''],
+    ['Datum:',new Date().toLocaleDateString('sl-SI'),'','','',''],
+    ['','','','','',''],
+    [...header,...kolHeader],
+    ...rows,
+    ['','','','','',''],
+    ['OPOMBA: Prosimo za cene za navedene količine. Zahvaljujemo se za ponudbo.'],
+  ];
+  const ws2=XLSX.utils.aoa_to_sheet(ws2Data);
+  ws2['!cols']=[{wch:30},{wch:12},{wch:8},{wch:20},{wch:12},{wch:10},...aktivnaPonudba.kolicine.map(()=>({wch:18}))];
+
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws2,'Povpraševanje dobavitelji');
+  XLSX.utils.book_append_sheet(wb,ws,'Sestavine');
+
+  const datum=new Date().toISOString().slice(0,10);
+  const naziv=(document.getElementById('np-naziv')?.value||'ponudba').replace(/\s+/g,'_');
+  XLSX.writeFile(wb,`poizvedba_dobavitelji_${naziv}_${datum}.xlsx`);
+  notif('✓ Excel za dobavitelje izvožen');
+}
+
+async function izvozExcelDobaviteljiById(id){
+  const{data}=await sb.from('ponudbe').select('*').eq('id',id).single();
+  if(!data)return;
+  aktivnaPonudba={...data};
+  izvozExcelDobavitelji();
+}
+
+async function shraniPonudbo(){
+  const g=id=>document.getElementById(id);
+  const obj={
+    stevilka:g('np-stevilka')?.value||aktivnaPonudba.stevilka,
+    naziv:g('np-naziv')?.value||'',
+    stranka_id:g('np-stranka')?.value||null,
+    tip:g('np-tip')?.value||'LIQUID',
+    marza:+g('np-marza')?.value||20,
+    veljavnost:g('np-veljavnost')?.value||null,
+    sestavine:aktivnaPonudba.sestavine,
+    kolicine:aktivnaPonudba.kolicine,
+    rezultati:aktivnaPonudba.rezultati,
+    status:'osnutek',
+    created_by:currentUser?.id,
+  };
+
+  let error;
+  if(aktivnaPonudba.id){
+    ({error}=await sb.from('ponudbe').update({...obj,updated_at:new Date().toISOString()}).eq('id',aktivnaPonudba.id));
+  } else {
+    const res=await sb.from('ponudbe').insert({...obj,created_at:new Date().toISOString()}).select().single();
+    error=res.error;
+    if(!error)aktivnaPonudba.id=res.data.id;
+  }
+  if(error){notif('⚠ Napaka: '+error.message,3500);return;}
+  notif('✓ Ponudba shranjena');
+  await loadPonudbe();
+}
+
+async function odpriPonudbo(id){
+  const{data}=await sb.from('ponudbe').select('*,stranke(podjetje)').eq('id',id).single();
+  if(!data)return;
+  aktivnaPonudba={...data};
+
+  const g=id=>document.getElementById(id);
+  if(g('np-stevilka'))g('np-stevilka').value=data.stevilka||'';
+  if(g('np-naziv'))g('np-naziv').value=data.naziv||'';
+  if(g('np-marza'))g('np-marza').value=data.marza||20;
+  if(g('np-veljavnost'))g('np-veljavnost').value=data.veljavnost||'';
+  if(g('np-tip'))g('np-tip').value=data.tip||'LIQUID';
+  if(g('np-title'))g('np-title').textContent=data.naziv||'Ponudba';
+  if(g('np-form-status'))g('np-form-status').innerHTML=`<span style="color:var(--accent-text)">✓ ${data.sestavine?.length||0} sestavin</span>`;
+
+  // Sync selects
+  const ssel=g('np-stranka');
+  if(ssel){
+    ssel.innerHTML='<option value="">— Izberi stranko —</option>'+
+      (strankeData||[]).map(s=>`<option value="${s.id}"${s.id===data.stranka_id?' selected':''}>${s.podjetje}</option>`).join('');
+  }
+  const stsel=g('np-stroj');
+  if(stsel)stsel.innerHTML=(strojData||[]).map((s,i)=>`<option value="${i}">${s.ime} — ${s.tip}</option>`).join('');
+
+  if(data.sestavine?.length){
+    renderNPSestavine();
+    renderNPKolicine();
+    if(data.rezultati?.length)renderNPRezultat();
+    ['np-sestavine-card','np-kolicine-card','np-rezultat-card','np-excel-btn','np-shrani-btn'].forEach(id=>{
+      const el=g(id);if(el)el.style.display='block';
+    });
+  }
+
+  showPanel('nova-ponudba');
+}
+
+async function deletePonudba(id){
+  if(!confirm('Izbrisati ponudbo?'))return;
+  await sb.from('ponudbe').delete().eq('id',id);
+  notif('✓ Ponudba izbrisana');
+  await loadPonudbe();
 }
 
 // ── INIT ──────────────────────────────────────────
