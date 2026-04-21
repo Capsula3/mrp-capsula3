@@ -1511,16 +1511,25 @@ async function loadCenikSestavineForFormula(){
 function renderCenikSestavin(){
   const q=(document.getElementById('cs-search')?.value||'').toLowerCase();
   const filtered=(cenikSestavineData||[]).filter(c=>!q||c.ime.toLowerCase().includes(q)||(c.dobavitelj||'').toLowerCase().includes(q));
+
+  // Poisci sestavine z istim imenom (vec dobaviteljev)
+  const imenaStevilo={};
+  (cenikSestavineData||[]).forEach(c=>{imenaStevilo[c.ime]=(imenaStevilo[c.ime]||0)+1;});
+
   const body=document.getElementById('cenik-sestavin-body');
   if(!body)return;
-  body.innerHTML=filtered.map(c=>`<tr>
-    <td style="font-weight:500">${c.ime}</td>
-    <td>${c.dobavitelj||'—'}</td>
+  body.innerHTML=filtered.map(c=>{
+    const vecDobaviteljev=imenaStevilo[c.ime]>1;
+    return`<tr>
+    <td style="font-weight:500">
+      ${c.ime}
+      ${vecDobaviteljev?`<span class="badge badge-blue" style="font-size:9px;margin-left:4px" title="Ista sestavina pri vec dobaviteljih">${imenaStevilo[c.ime]}x</span>`:''}
+    </td>
+    <td>${c.dobavitelj?`<span class="badge badge-gray" style="font-size:10px">${c.dobavitelj}</span>`:'—'}</td>
     <td>${c.enota||'kg'}</td>
     ${TIER_COLS.map((col,ti)=>{
       const min=getMinNarocilo(c);
       const minIdx=min?min.idx:0;
-      const available=ti>=minIdx&&c[col]>0;
       const nedostopno=ti<minIdx;
       return`<td class="td-mono" style="${nedostopno?'color:var(--text3);text-decoration:line-through;opacity:.4':!c[col]?'color:var(--text3)':''}">${c[col]?f2(c[col]):'—'}</td>`;
     }).join('')}
@@ -1530,7 +1539,8 @@ function renderCenikSestavin(){
       <button class="btn btn-sm" onclick="editCenikSestavina('${c.id}')">✎</button>
       <button class="btn btn-del" onclick="deleteCenikSestavina('${c.id}')">✕</button>
     </div></td>
-  </tr>`).join('');
+  </tr>`;
+  }).join('');
 }
 
 function filterCenikSestavin(){renderCenikSestavin();}
@@ -3374,14 +3384,17 @@ async function izvedziUvozAI(){
   try{
     let dodanih=0,preskocenih=0,napak=0;
     if(nacin==='dodaj'){
-      const{data:obs}=await sb.from('cenik_sestavin').select('ime');
-      const obsImena=new Set((obs||[]).map(x=>x.ime.toLowerCase()));
-      const novi=objekti.filter(o=>!obsImena.has(o.ime.toLowerCase()));
+      const{data:obs}=await sb.from('cenik_sestavin').select('ime,dobavitelj');
+      // Unikatnost = ime + dobavitelj (isti dobavitelj ne more imeti iste sestavine dvakrat)
+      const obsKljuci=new Set((obs||[]).map(x=>`${x.ime.toLowerCase()}|${(x.dobavitelj||'').toLowerCase()}`));
+      const novi=objekti.filter(o=>!obsKljuci.has(`${o.ime.toLowerCase()}|${(o.dobavitelj||'').toLowerCase()}`));
       preskocenih=objekti.length-novi.length;
       if(novi.length){const{error}=await sb.from('cenik_sestavin').insert(novi);if(error)throw error;dodanih=novi.length;}
     } else {
       for(const obj of objekti){
-        const{data:o}=await sb.from('cenik_sestavin').select('id').eq('ime',obj.ime).single();
+        // Poisci po ime + dobavitelj
+        const{data:o}=await sb.from('cenik_sestavin').select('id')
+          .eq('ime',obj.ime).eq('dobavitelj',obj.dobavitelj||'').maybeSingle();
         if(o){const{error}=await sb.from('cenik_sestavin').update({...obj,updated_at:new Date().toISOString()}).eq('id',o.id);if(error)napak++;else dodanih++;}
         else{const{error}=await sb.from('cenik_sestavin').insert(obj);if(error)napak++;else dodanih++;}
       }
