@@ -3381,18 +3381,31 @@ async function izvedziUvozAI(){
     };
   });
 
+  // Reši duplikate znotraj uvozne datoteke z dodajanjem pripone (2), (3)...
+  const videni = new Map();
+  const objektiBrezDuplikatov = objekti.map(o=>{
+    const kljuc = `${o.ime.toLowerCase()}|${(o.dobavitelj||'').toLowerCase()}`;
+    const stevilo = (videni.get(kljuc)||0) + 1;
+    videni.set(kljuc, stevilo);
+    if(stevilo > 1){
+      return {...o, ime: `${o.ime} (${stevilo})`};
+    }
+    return o;
+  });
+
   try{
     let dodanih=0,preskocenih=0,napak=0;
+    const vhodnih = objektiBrezDuplikatov.length;
+    const preskoceniVDatoteki = 0; // nič ne preskočimo
+
     if(nacin==='dodaj'){
       const{data:obs}=await sb.from('cenik_sestavin').select('ime,dobavitelj');
-      // Unikatnost = ime + dobavitelj (isti dobavitelj ne more imeti iste sestavine dvakrat)
       const obsKljuci=new Set((obs||[]).map(x=>`${x.ime.toLowerCase()}|${(x.dobavitelj||'').toLowerCase()}`));
-      const novi=objekti.filter(o=>!obsKljuci.has(`${o.ime.toLowerCase()}|${(o.dobavitelj||'').toLowerCase()}`));
-      preskocenih=objekti.length-novi.length;
+      const novi=objektiBrezDuplikatov.filter(o=>!obsKljuci.has(`${o.ime.toLowerCase()}|${(o.dobavitelj||'').toLowerCase()}`));
+      preskocenih=vhodnih-novi.length;
       if(novi.length){const{error}=await sb.from('cenik_sestavin').insert(novi);if(error)throw error;dodanih=novi.length;}
     } else {
-      for(const obj of objekti){
-        // Poisci po ime + dobavitelj
+      for(const obj of objektiBrezDuplikatov){
         const{data:o}=await sb.from('cenik_sestavin').select('id')
           .eq('ime',obj.ime).eq('dobavitelj',obj.dobavitelj||'').maybeSingle();
         if(o){const{error}=await sb.from('cenik_sestavin').update({...obj,updated_at:new Date().toISOString()}).eq('id',o.id);if(error)napak++;else dodanih++;}
@@ -3403,7 +3416,8 @@ async function izvedziUvozAI(){
     if(statusTxt)statusTxt.innerHTML=`
       <span style="color:var(--accent-text)">✓ Uvoz zakljucen:</span>
       <span class="badge badge-green" style="margin-left:8px">${dodanih} dodanih</span>
-      ${preskocenih>0?`<span class="badge badge-gray" style="margin-left:4px">${preskocenih} preskocenih</span>`:''}
+      ${preskocenih>0?`<span class="badge badge-gray" style="margin-left:4px">${preskocenih} ze obstaja</span>`:''}
+      ${preskoceniVDatoteki>0?`<span class="badge badge-warn" style="margin-left:4px">${preskoceniVDatoteki} duplikatov v datoteki</span>`:''}
       ${napak>0?`<span class="badge badge-red" style="margin-left:4px">${napak} napak</span>`:''}
       <button class="btn btn-sm" onclick="document.getElementById('uvoz-status').style.display='none'" style="margin-left:12px">✕ Zapri</button>`;
     notif(`✓ Uvozeno ${dodanih} sestavin`);
