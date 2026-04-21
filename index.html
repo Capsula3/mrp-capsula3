@@ -354,7 +354,7 @@ tr:hover td{background:var(--surface2)}
               <thead><tr>
                 <th>Sestavina</th><th>Dobavitelj</th><th>Enota</th>
                 <th>1 kg</th><th>5 kg</th><th>10 kg</th><th>25 kg</th>
-                <th>50 kg</th><th>100 kg</th><th>500 kg</th><th>1000 kg</th>
+                <th>50 kg</th><th>100 kg</th><th>250 kg</th><th>500 kg</th><th>1000 kg</th><th>Min. naročilo</th>
                 <th>Min. nar.</th><th></th>
               </tr></thead>
               <tbody id="cenik-sestavin-body"></tbody>
@@ -1517,7 +1517,14 @@ function renderCenikSestavin(){
     <td style="font-weight:500">${c.ime}</td>
     <td>${c.dobavitelj||'—'}</td>
     <td>${c.enota||'kg'}</td>
-    ${TIER_COLS.map(col=>`<td class="td-mono">${c[col]?f2(c[col]):'—'}</td>`).join('')}
+    ${TIER_COLS.map((col,ti)=>{
+      const min=getMinNarocilo(c);
+      const minIdx=min?min.idx:0;
+      const available=ti>=minIdx&&c[col]>0;
+      const nedostopno=ti<minIdx;
+      return`<td class="td-mono" style="${nedostopno?'color:var(--text3);text-decoration:line-through;opacity:.4':!c[col]?'color:var(--text3)':''}">${c[col]?f2(c[col]):'—'}</td>`;
+    }).join('')}
+    <td style="font-size:11px;color:var(--info);font-family:var(--mono)">${(()=>{const m=getMinNarocilo(c);return m?`Min: ${m.kg} kg`:'—';})()}</td>
     <td class="td-mono">${c.min_narocilo||0}</td>
     <td><div style="display:flex;gap:4px">
       <button class="btn btn-sm" onclick="editCenikSestavina('${c.id}')">✎</button>
@@ -1774,7 +1781,7 @@ function renderFormula(){
   body.innerHTML=formulaData.map((f,i)=>{
     const c=(cenikSestavineData||[]).find(x=>x.id===f.sestavina_id);
     // Cene iz cenika
-    const cene = c ? TIER_COLS.map((col,ti)=>({kg:TIER_KG[ti],cena:c[col]})).filter(x=>x.cena) : [];
+    const cene = c ? getCenikRazredi(c) : [];
     const minC = cene.length ? Math.min(...cene.map(x=>x.cena)) : 0;
     const maxC = cene.length ? Math.max(...cene.map(x=>x.cena)) : 0;
     // Neto mg (z izgubo)
@@ -1857,11 +1864,39 @@ async function shraniFormulo(){
 }
 
 // ── IZRAČUN ─────────────────────────────────────────────────
+// Vrne prvi razred kjer cena obstaja = minimalno narocilo
+function getMinNarocilo(c){
+  if(!c)return null;
+  for(let i=0;i<TIER_COLS.length;i++){
+    if(c[TIER_COLS[i]]>0)return{kg:TIER_KG[i],cena:c[TIER_COLS[i]],idx:i};
+  }
+  return null;
+}
+
+// Vrne ceno glede na kolicino — uposteva minimalno narocilo
+// Ce kg < min narocilo, vrne null (narocilo ni mozno)
+// Ce kg >= min narocilo, vrne ceno najblizjega razreda
 function getCenikCena(c,kg){
   if(!c)return 0;
-  let idx=0;
-  for(let i=0;i<TIER_KG.length;i++){if(kg>=TIER_KG[i])idx=i;}
-  return c[TIER_COLS[idx]]||0;
+  const min=getMinNarocilo(c);
+  if(!min)return 0;
+  // Ce kolicina je manjsa od minimalnega narocila, vrni 0
+  if(kg<min.kg)return 0;
+  // Poisci najvisji razred ki je <= kg in ima ceno
+  let cena=min.cena;
+  for(let i=min.idx;i<TIER_COLS.length;i++){
+    if(TIER_KG[i]<=kg&&c[TIER_COLS[i]]>0)cena=c[TIER_COLS[i]];
+  }
+  return cena;
+}
+
+// Vrne vse veljavne cenovne razrede za sestavino (samo tisti z cenami)
+function getCenikRazredi(c){
+  if(!c)return[];
+  const min=getMinNarocilo(c);if(!min)return[];
+  return TIER_COLS
+    .map((col,i)=>({kg:TIER_KG[i],cena:c[col],idx:i}))
+    .filter(t=>t.idx>=min.idx&&t.cena>0);
 }
 function izracunaj(){
   const stroj=getStroj();
@@ -3301,19 +3336,20 @@ async function izvedziUvozAI(){
 
   const objekti=jsonData.filter(v=>v[map.ime]&&String(v[map.ime]).trim()).map(v=>{
     const cene={};
-    // Najprej preberi vse cene
+    // Preberi vse cene
     razredi.forEach(r=>{cene[r]=map[r]?parseNum(v[map[r]]):null;});
-    // Fill-down: če cena manjka, uporabi prejšnjo znano ceno
-    let zadnjaCena=null;
-    razredi.forEach(r=>{
-      if(cene[r]!==null&&cene[r]>0){zadnjaCena=cene[r];}
-      else if(zadnjaCena!==null){cene[r]=zadnjaCena;}
-    });
-    // Fill-up: če manjka prva cena, vzemi naslednjo
-    let prvaCena=null;
-    for(let i=razredi.length-1;i>=0;i--){
-      if(cene[razredi[i]]!==null&&cene[razredi[i]]>0){prvaCena=cene[razredi[i]];}
-      else if(prvaCena!==null&&cene[razredi[i]]===null){cene[razredi[i]]=prvaCena;}
+    // Poisci prvi razred z veljavno ceno = minimalno narocilo
+    let minIdx=-1;
+    for(let i=0;i<razredi.length;i++){if(cene[razredi[i]]>0){minIdx=i;break;}}
+    // Fill-down: zapolni samo od minIdx naprej (ne pred njim!)
+    if(minIdx>=0){
+      let zadnjaCena=null;
+      for(let i=minIdx;i<razredi.length;i++){
+        if(cene[razredi[i]]!==null&&cene[razredi[i]]>0){zadnjaCena=cene[razredi[i]];}
+        else if(zadnjaCena!==null){cene[razredi[i]]=zadnjaCena;}
+      }
+      // Razredi pred minIdx pustimo null (narocilo ni mozno)
+      for(let i=0;i<minIdx;i++){cene[razredi[i]]=null;}
     }
     return{
       ime:String(v[map.ime]||'').trim(),
@@ -3855,7 +3891,7 @@ function renderFDFormula(){
   const body=document.getElementById('fd-formula-body');if(!body)return;
   body.innerHTML=fdSestavine.map((f,i)=>{
     const c=(cenikSestavineData||[]).find(x=>x.id===f.sestavina_id);
-    const cene = c ? TIER_COLS.map((col,ti)=>({kg:TIER_KG[ti],cena:c[col]})).filter(x=>x.cena) : [];
+    const cene = c ? getCenikRazredi(c) : [];
     const minC = cene.length ? Math.min(...cene.map(x=>x.cena)) : 0;
     const maxC = cene.length ? Math.max(...cene.map(x=>x.cena)) : 0;
     const netoMg = (f.kol||0)*(1+(f.izguba||0)/100);
