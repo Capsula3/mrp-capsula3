@@ -1493,8 +1493,8 @@ function statusBadgeClass(s){
 }
 
 // ── CENIK SESTAVIN ─────────────────────────────────────────
-const TIER_KG=[1,5,10,25,50,100,500,1000];
-const TIER_COLS=['cena_1kg','cena_5kg','cena_10kg','cena_25kg','cena_50kg','cena_100kg','cena_500kg','cena_1000kg'];
+const TIER_KG=[1,5,10,25,50,100,250,500,1000];
+const TIER_COLS=['cena_1kg','cena_5kg','cena_10kg','cena_25kg','cena_50kg','cena_100kg','cena_250kg','cena_500kg','cena_1000kg'];
 
 async function loadCenikSestavin(){
   const{data}=await sb.from('cenik_sestavin').select('*').order('ime');
@@ -3297,24 +3297,43 @@ async function izvedziUvozAI(){
     const n=parseFloat(s);return isNaN(n)?null:n;
   };
 
-  const objekti=jsonData.filter(v=>v[map.ime]&&String(v[map.ime]).trim()).map(v=>({
-    ime:String(v[map.ime]||'').trim(),
-    dobavitelj:map.dobavitelj?String(v[map.dobavitelj]||'').trim():'',
-    enota:map.enota?String(v[map.enota]||'kg').trim()||'kg':'kg',
-    cena_1kg:map.cena_1kg?parseNum(v[map.cena_1kg]):null,
-    cena_5kg:map.cena_5kg?parseNum(v[map.cena_5kg]):null,
-    cena_10kg:map.cena_10kg?parseNum(v[map.cena_10kg]):null,
-    cena_25kg:map.cena_25kg?parseNum(v[map.cena_25kg]):null,
-    cena_50kg:map.cena_50kg?parseNum(v[map.cena_50kg]):null,
-    cena_100kg:map.cena_100kg?parseNum(v[map.cena_100kg]):null,
-    cena_250kg:map.cena_250kg?parseNum(v[map.cena_250kg]):null,
-    cena_500kg:map.cena_500kg?parseNum(v[map.cena_500kg]):null,
-    cena_1000kg:map.cena_1000kg?parseNum(v[map.cena_1000kg]):null,
-    min_narocilo:map.min_narocilo?parseNum(v[map.min_narocilo])||0:0,
-    opomba:map.opomba?String(v[map.opomba]||'').trim():'',
-    created_at:new Date().toISOString(),
-    updated_at:new Date().toISOString(),
-  }));
+  const razredi=['cena_1kg','cena_5kg','cena_10kg','cena_25kg','cena_50kg','cena_100kg','cena_250kg','cena_500kg','cena_1000kg'];
+
+  const objekti=jsonData.filter(v=>v[map.ime]&&String(v[map.ime]).trim()).map(v=>{
+    const cene={};
+    // Najprej preberi vse cene
+    razredi.forEach(r=>{cene[r]=map[r]?parseNum(v[map[r]]):null;});
+    // Fill-down: če cena manjka, uporabi prejšnjo znano ceno
+    let zadnjaCena=null;
+    razredi.forEach(r=>{
+      if(cene[r]!==null&&cene[r]>0){zadnjaCena=cene[r];}
+      else if(zadnjaCena!==null){cene[r]=zadnjaCena;}
+    });
+    // Fill-up: če manjka prva cena, vzemi naslednjo
+    let prvaCena=null;
+    for(let i=razredi.length-1;i>=0;i--){
+      if(cene[razredi[i]]!==null&&cene[razredi[i]]>0){prvaCena=cene[razredi[i]];}
+      else if(prvaCena!==null&&cene[razredi[i]]===null){cene[razredi[i]]=prvaCena;}
+    }
+    return{
+      ime:String(v[map.ime]||'').trim(),
+      dobavitelj:map.dobavitelj?String(v[map.dobavitelj]||'').trim():'',
+      enota:map.enota?String(v[map.enota]||'kg').trim()||'kg':'kg',
+      cena_1kg:cene.cena_1kg,
+      cena_5kg:cene.cena_5kg,
+      cena_10kg:cene.cena_10kg,
+      cena_25kg:cene.cena_25kg,
+      cena_50kg:cene.cena_50kg,
+      cena_100kg:cene.cena_100kg,
+      cena_250kg:cene.cena_250kg,
+      cena_500kg:cene.cena_500kg,
+      cena_1000kg:cene.cena_1000kg,
+      min_narocilo:map.min_narocilo?parseNum(v[map.min_narocilo])||0:0,
+      opomba:map.opomba?String(v[map.opomba]||'').trim():'',
+      created_at:new Date().toISOString(),
+      updated_at:new Date().toISOString(),
+    };
+  });
 
   try{
     let dodanih=0,preskocenih=0,napak=0;
