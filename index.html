@@ -3148,29 +3148,29 @@ async function deleteStroj(id){
 // ── UVOZ / IZVOZ CENIK SESTAVIN ───────────────────
 
 async function uvozCenikSestavin(input){
-  const file = input.files[0];if(!file)return;
-  const statusEl = document.getElementById('uvoz-status');
-  const statusTxt = document.getElementById('uvoz-status-text');
+  const file=input.files[0];if(!file)return;
+  const statusEl=document.getElementById('uvoz-status');
+  const statusTxt=document.getElementById('uvoz-status-text');
   if(statusEl)statusEl.style.display='block';
-  if(statusTxt)statusTxt.innerHTML='<span style="color:var(--text2)">⟳ Berem datoteko… Claude analizira strukturo.</span>';
+  if(statusTxt)statusTxt.innerHTML='<span style="color:var(--text2)">⟳ Claude analizira strukturo datoteke…</span>';
 
   try{
-    const ext = file.name.split('.').pop().toLowerCase();
-    let jsonData = [];
+    const ext=file.name.split('.').pop().toLowerCase();
+    let jsonData=[];
 
     if(ext==='csv'){
-      const text = await file.text();
-      const lines = text.split('\n').filter(l=>l.trim());
-      const header = lines[0].split(/[,;]/).map(h=>h.trim().replace(/"/g,''));
-      jsonData = lines.slice(1).map(line=>{
-        const cells = line.split(/[,;]/).map(c=>c.trim().replace(/"/g,''));
+      const text=await file.text();
+      const lines=text.split('\n').filter(l=>l.trim());
+      const header=lines[0].split(/[,;]/).map(h=>h.trim().replace(/"/g,''));
+      jsonData=lines.slice(1).map(line=>{
+        const cells=line.split(/[,;]/).map(c=>c.trim().replace(/"/g,''));
         const obj={};header.forEach((h,i)=>obj[h]=cells[i]||'');return obj;
       });
     } else {
-      const buffer = await file.arrayBuffer();
-      const wb = XLSX.read(buffer,{type:'array'});
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      jsonData = XLSX.utils.sheet_to_json(ws,{defval:''});
+      const buffer=await file.arrayBuffer();
+      const wb=XLSX.read(buffer,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      jsonData=XLSX.utils.sheet_to_json(ws,{defval:''});
     }
 
     if(!jsonData.length){
@@ -3178,49 +3178,26 @@ async function uvozCenikSestavin(input){
       return;
     }
 
-    // Pošlji prvih 20 vrstic Claudu za analizo
-    const vzorec = jsonData.slice(0, 20);
-    const stolpci = Object.keys(vzorec[0]||{});
+    const stolpci=Object.keys(jsonData[0]||{});
+    const vzorec=jsonData.slice(0,5);
 
-    const prompt = `Si strokovnjak za uvoz cenikov sestavin v MRP sisteme.
+    const prompt=`Analiziraj to Excel/CSV datoteko z cenikom sestavin in vrni SAMO JSON brez razlage:
+{"mapiranje":{"ime":"stolpec z imenom sestavine","dobavitelj":null,"enota":null,"cena_1kg":null,"cena_5kg":null,"cena_10kg":null,"cena_25kg":null,"cena_50kg":null,"cena_100kg":null,"cena_250kg":null,"cena_500kg":null,"cena_1000kg":null,"min_narocilo":null,"opomba":null},"decimalni_locilnik":"pika","komentar":""}
 
-Analiziraj to Excel/CSV datoteko z cenikom sestavin in vrni SAMO JSON:
-{
-  "mapiranje": {
-    "ime": "tocno ime stolpca z imenom sestavine",
-    "dobavitelj": "ime stolpca z dobaviteljem ali null",
-    "enota": "ime stolpca z enoto (kg/l/kos) ali null",
-    "cena_1kg": "ime stolpca za ceno pri 1kg ali null",
-    "cena_5kg": "ime stolpca za ceno pri 5kg ali null",
-    "cena_10kg": "ime stolpca za ceno pri 10kg ali null",
-    "cena_25kg": "ime stolpca za ceno pri 25kg ali null",
-    "cena_50kg": "ime stolpca za ceno pri 50kg ali null",
-    "cena_100kg": "ime stolpca za ceno pri 100kg ali null",
-    "cena_250kg": "ime stolpca za ceno pri 250kg ali null",
-    "cena_500kg": "ime stolpca za ceno pri 500kg ali null",
-    "cena_1000kg": "ime stolpca za ceno pri 1000kg ali null",
-    "min_narocilo": "ime stolpca za minimalno narocilo ali null",
-    "opomba": "ime stolpca z opombami ali null"
-  },
-  "decimalni_locilnik": "pika ali vejica",
-  "stevilo_vrstic": ${jsonData.length},
-  "komentar": "kratka razlaga strukture datoteke"
-}
+Stolpci: ${JSON.stringify(stolpci)}
+Prve vrstice: ${JSON.stringify(vzorec.slice(0,3))}
 
-Stolpci v datoteki: ${JSON.stringify(stolpci)}
-Prve 3 vrstice:
-${JSON.stringify(vzorec.slice(0,3), null, 2)}
+Za vsako polje poisci ustrezen stolpec ali vrni null. Vrni SAMO JSON.`;
 
-Vrni SAMO JSON.`;
-
-    const resp = await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1000,
+    const resp=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:800,
         messages:[{role:'user',content:prompt}]})});
-    const data = await resp.json();
-    const text = (data.content?.map(c=>c.text||'').join('')||'').replace(/```json|```/g,'').trim();
-    const analiza = JSON.parse(text);
+    const data=await resp.json();
+    const text=(data.content?.map(c=>c.text||'').join('')||'').replace(/```json|```/g,'').trim();
+    let analiza;
+    try{analiza=JSON.parse(text);}
+    catch(e){analiza={mapiranje:{ime:stolpci[0]||''},decimalni_locilnik:'pika',komentar:''};}
 
-    // Prikaži predogled z AI maporanjem
     showUvozPreviewAI(jsonData, file.name, analiza);
 
   }catch(err){
@@ -3230,67 +3207,58 @@ Vrni SAMO JSON.`;
 }
 
 function showUvozPreviewAI(jsonData, filename, analiza){
-  const statusEl = document.getElementById('uvoz-status');
-  const statusTxt = document.getElementById('uvoz-status-text');
-  const map = analiza.mapiranje||{};
-  const stolpci = Object.keys(jsonData[0]||{});
-  const decLoc = analiza.decimalni_locilnik||'pika';
-  window._uvozJsonData = jsonData;
-  window._uvozDecLoc = decLoc;
+  const statusTxt=document.getElementById('uvoz-status-text');
+  const map=analiza.mapiranje||{};
+  const stolpci=Object.keys(jsonData[0]||{});
+  const decLoc=analiza.decimalni_locilnik||'pika';
+  window._uvozJsonData=jsonData;
+  window._uvozDecLoc=decLoc;
 
-  const polja = [
-    {k:'ime', label:'Ime sestavine', obvezno:true},
-    {k:'dobavitelj', label:'Dobavitelj'},
-    {k:'enota', label:'Enota (kg/l/kos)'},
-    {k:'cena_1kg', label:'Cena / 1 kg'},
-    {k:'cena_5kg', label:'Cena / 5 kg'},
-    {k:'cena_10kg', label:'Cena / 10 kg'},
-    {k:'cena_25kg', label:'Cena / 25 kg'},
-    {k:'cena_50kg', label:'Cena / 50 kg'},
-    {k:'cena_100kg', label:'Cena / 100 kg'},
-    {k:'cena_250kg', label:'Cena / 250 kg'},
-    {k:'cena_500kg', label:'Cena / 500 kg'},
-    {k:'cena_1000kg', label:'Cena / 1000 kg'},
-    {k:'min_narocilo', label:'Min. narocilo'},
-    {k:'opomba', label:'Opomba'},
+  const polja=[
+    {k:'ime',label:'Ime sestavine',obvezno:true},
+    {k:'dobavitelj',label:'Dobavitelj'},
+    {k:'enota',label:'Enota (kg/l/kos)'},
+    {k:'cena_1kg',label:'Cena / 1 kg'},
+    {k:'cena_5kg',label:'Cena / 5 kg'},
+    {k:'cena_10kg',label:'Cena / 10 kg'},
+    {k:'cena_25kg',label:'Cena / 25 kg'},
+    {k:'cena_50kg',label:'Cena / 50 kg'},
+    {k:'cena_100kg',label:'Cena / 100 kg'},
+    {k:'cena_250kg',label:'Cena / 250 kg'},
+    {k:'cena_500kg',label:'Cena / 500 kg'},
+    {k:'cena_1000kg',label:'Cena / 1000 kg'},
+    {k:'min_narocilo',label:'Min. narocilo'},
+    {k:'opomba',label:'Opomba'},
   ];
+  const vzorec=jsonData.slice(0,3);
 
-  const vzorecVrstice = jsonData.slice(0,3);
-
-  const vrsticeTabel = polja.map(p=>{
-    const mapped = map[p.k]||'';
-    const primer = mapped&&vzorecVrstice[0]?vzorecVrstice[0][mapped]||'—':'—';
-    const ujemanje = mapped ? `<span class="badge badge-green" style="font-size:10px">✓ AI</span>` : '';
+  const vrstice=polja.map(p=>{
+    const mapped=map[p.k]||'';
+    const primer=mapped&&vzorec[0]?vzorec[0][mapped]||'—':'—';
     return `<tr>
-      <td style="font-size:12px;font-weight:${p.obvezno?'600':'400'}">${p.label}${p.obvezno?' *':''}</td>
-      <td>
-        <div style="display:flex;align-items:center;gap:6px">
-          <select id="aimap-${p.k}" style="font-size:12px;flex:1">
-            <option value="">— Preskoči —</option>
-            ${stolpci.map(s=>`<option value="${s}"${s===mapped?' selected':''}>${s}</option>`).join('')}
-          </select>
-          ${ujemanje}
-        </div>
-      </td>
+      <td style="font-size:12px;font-weight:${p.obvezno?600:400}">${p.label}${p.obvezno?' *':''}</td>
+      <td><div style="display:flex;align-items:center;gap:6px">
+        <select id="aimap-${p.k}" style="font-size:12px;flex:1">
+          <option value="">— Preskoči —</option>
+          ${stolpci.map(s=>`<option value="${s}"${s===mapped?' selected':''}>${s}</option>`).join('')}
+        </select>
+        ${mapped?'<span class="badge badge-green" style="font-size:10px">✓ AI</span>':''}
+      </div></td>
       <td style="font-size:11px;color:var(--text3);font-family:var(--mono)">${primer}</td>
     </tr>`;
   }).join('');
 
   if(statusTxt)statusTxt.innerHTML=`
     <div style="margin-bottom:.75rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-      <span style="font-weight:500;font-size:14px">Claude je analiziral: <b>${filename}</b></span>
+      <span style="font-weight:500">Claude je analiziral: <b>${filename}</b></span>
       <span class="badge badge-green">${jsonData.length} vrstic</span>
-      <span class="badge badge-blue">Decimalno locilo: ${decLoc}</span>
+      <span class="badge badge-blue">Decimalno: ${decLoc}</span>
       ${analiza.komentar?`<span style="font-size:12px;color:var(--text3)">${analiza.komentar}</span>`:''}
     </div>
     <div class="tbl-wrap" style="margin-bottom:.875rem">
     <table>
-      <thead><tr>
-        <th style="min-width:130px">Polje</th>
-        <th style="min-width:200px">Stolpec v datoteki</th>
-        <th style="min-width:120px">Primer vrednosti</th>
-      </tr></thead>
-      <tbody>${vrsticeTabel}</tbody>
+      <thead><tr><th>Polje</th><th>Stolpec v datoteki</th><th>Primer</th></tr></thead>
+      <tbody>${vrstice}</tbody>
     </table>
     </div>
     <div style="background:var(--warn-light);border:1px solid var(--warn);border-radius:var(--radius);padding:.75rem;font-size:12px;margin-bottom:.875rem">
@@ -3309,63 +3277,57 @@ function showUvozPreviewAI(jsonData, filename, analiza){
 }
 
 async function izvedziUvozAI(){
-  const jsonData = window._uvozJsonData||[];
-  const decLoc = window._uvozDecLoc||'pika';
-  const nacin = document.querySelector('input[name="uvoz-nacin"]:checked')?.value||'dodaj';
-
-  // Preberi mapiranje iz selectov
-  const polja = ['ime','dobavitelj','enota','cena_1kg','cena_5kg','cena_10kg','cena_25kg',
+  const jsonData=window._uvozJsonData||[];
+  const decLoc=window._uvozDecLoc||'pika';
+  const nacin=document.querySelector('input[name="uvoz-nacin"]:checked')?.value||'dodaj';
+  const polja=['ime','dobavitelj','enota','cena_1kg','cena_5kg','cena_10kg','cena_25kg',
     'cena_50kg','cena_100kg','cena_250kg','cena_500kg','cena_1000kg','min_narocilo','opomba'];
   const map={};
   polja.forEach(p=>{const s=document.getElementById('aimap-'+p);if(s&&s.value)map[p]=s.value;});
-
-  if(!map.ime){notif('⚠ Izberite stolpec za Ime sestavine!',3000);return;}
+  if(!map.ime){notif('⚠ Izberite stolpec za Ime!',3000);return;}
 
   const statusTxt=document.getElementById('uvoz-status-text');
   if(statusTxt)statusTxt.innerHTML=`<span style="color:var(--text2)">⟳ Uvažam ${jsonData.length} sestavin…</span>`;
 
-  const parseNum = v => {
+  const parseNum=v=>{
     if(!v&&v!==0)return null;
-    let s = String(v).trim().replace(/[^0-9.,\-]/g,'');
+    let s=String(v).trim().replace(/[^0-9.,\-]/g,'');
     if(decLoc==='vejica'){s=s.replace(/\./g,'').replace(',','.');}
     else{s=s.replace(/,/g,'');}
-    const n=parseFloat(s);
-    return isNaN(n)?null:n;
+    const n=parseFloat(s);return isNaN(n)?null:n;
   };
 
-  const objekti = jsonData
-    .filter(v=>v[map.ime]&&String(v[map.ime]).trim())
-    .map(v=>({
-      ime:String(v[map.ime]||'').trim(),
-      dobavitelj:map.dobavitelj?String(v[map.dobavitelj]||'').trim():'',
-      enota:map.enota?String(v[map.enota]||'kg').trim()||'kg':'kg',
-      cena_1kg:   map.cena_1kg?parseNum(v[map.cena_1kg]):null,
-      cena_5kg:   map.cena_5kg?parseNum(v[map.cena_5kg]):null,
-      cena_10kg:  map.cena_10kg?parseNum(v[map.cena_10kg]):null,
-      cena_25kg:  map.cena_25kg?parseNum(v[map.cena_25kg]):null,
-      cena_50kg:  map.cena_50kg?parseNum(v[map.cena_50kg]):null,
-      cena_100kg: map.cena_100kg?parseNum(v[map.cena_100kg]):null,
-      cena_250kg: map.cena_250kg?parseNum(v[map.cena_250kg]):null,
-      cena_500kg: map.cena_500kg?parseNum(v[map.cena_500kg]):null,
-      cena_1000kg:map.cena_1000kg?parseNum(v[map.cena_1000kg]):null,
-      min_narocilo:map.min_narocilo?parseNum(v[map.min_narocilo])||0:0,
-      opomba:map.opomba?String(v[map.opomba]||'').trim():'',
-      created_at:new Date().toISOString(),
-      updated_at:new Date().toISOString(),
-    }));
+  const objekti=jsonData.filter(v=>v[map.ime]&&String(v[map.ime]).trim()).map(v=>({
+    ime:String(v[map.ime]||'').trim(),
+    dobavitelj:map.dobavitelj?String(v[map.dobavitelj]||'').trim():'',
+    enota:map.enota?String(v[map.enota]||'kg').trim()||'kg':'kg',
+    cena_1kg:map.cena_1kg?parseNum(v[map.cena_1kg]):null,
+    cena_5kg:map.cena_5kg?parseNum(v[map.cena_5kg]):null,
+    cena_10kg:map.cena_10kg?parseNum(v[map.cena_10kg]):null,
+    cena_25kg:map.cena_25kg?parseNum(v[map.cena_25kg]):null,
+    cena_50kg:map.cena_50kg?parseNum(v[map.cena_50kg]):null,
+    cena_100kg:map.cena_100kg?parseNum(v[map.cena_100kg]):null,
+    cena_250kg:map.cena_250kg?parseNum(v[map.cena_250kg]):null,
+    cena_500kg:map.cena_500kg?parseNum(v[map.cena_500kg]):null,
+    cena_1000kg:map.cena_1000kg?parseNum(v[map.cena_1000kg]):null,
+    min_narocilo:map.min_narocilo?parseNum(v[map.min_narocilo])||0:0,
+    opomba:map.opomba?String(v[map.opomba]||'').trim():'',
+    created_at:new Date().toISOString(),
+    updated_at:new Date().toISOString(),
+  }));
 
   try{
     let dodanih=0,preskocenih=0,napak=0;
     if(nacin==='dodaj'){
-      const{data:obstojeciData}=await sb.from('cenik_sestavin').select('ime');
-      const obstojeciImena=new Set((obstojeciData||[]).map(x=>x.ime.toLowerCase()));
-      const novi=objekti.filter(o=>!obstojeciImena.has(o.ime.toLowerCase()));
+      const{data:obs}=await sb.from('cenik_sestavin').select('ime');
+      const obsImena=new Set((obs||[]).map(x=>x.ime.toLowerCase()));
+      const novi=objekti.filter(o=>!obsImena.has(o.ime.toLowerCase()));
       preskocenih=objekti.length-novi.length;
       if(novi.length){const{error}=await sb.from('cenik_sestavin').insert(novi);if(error)throw error;dodanih=novi.length;}
     } else {
       for(const obj of objekti){
-        const{data:obs}=await sb.from('cenik_sestavin').select('id').eq('ime',obj.ime).single();
-        if(obs){const{error}=await sb.from('cenik_sestavin').update({...obj,updated_at:new Date().toISOString()}).eq('id',obs.id);if(error)napak++;else dodanih++;}
+        const{data:o}=await sb.from('cenik_sestavin').select('id').eq('ime',obj.ime).single();
+        if(o){const{error}=await sb.from('cenik_sestavin').update({...obj,updated_at:new Date().toISOString()}).eq('id',o.id);if(error)napak++;else dodanih++;}
         else{const{error}=await sb.from('cenik_sestavin').insert(obj);if(error)napak++;else dodanih++;}
       }
     }
@@ -3379,8 +3341,1558 @@ async function izvedziUvozAI(){
     notif(`✓ Uvozeno ${dodanih} sestavin`);
   }catch(err){
     if(statusTxt)statusTxt.innerHTML=`<span style="color:var(--danger)">⚠ Napaka: ${err.message}</span>`;
-    notif('⚠ Napaka pri uvozu',3500);
+    notif('⚠ Napaka',3500);
   }
 }
 
 
+function izvozCenikSestavin(){
+  if(!cenikSestavineData?.length){notif('Ni podatkov za izvoz');return;}
+  const ws = XLSX.utils.json_to_sheet(cenikSestavineData.map(c=>({
+    'Ime sestavine': c.ime,
+    'Dobavitelj': c.dobavitelj||'',
+    'Enota': c.enota||'kg',
+    '1 kg': c.cena_1kg||'',
+    '5 kg': c.cena_5kg||'',
+    '10 kg': c.cena_10kg||'',
+    '25 kg': c.cena_25kg||'',
+    '50 kg': c.cena_50kg||'',
+    '100 kg': c.cena_100kg||'',
+    '500 kg': c.cena_500kg||'',
+    '1000 kg': c.cena_1000kg||'',
+    'Min. narocilo': c.min_narocilo||0,
+    'Opomba': c.opomba||'',
+  })));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Cenik sestavin');
+  XLSX.writeFile(wb,`cenik_sestavin_${new Date().toISOString().slice(0,10)}.xlsx`);
+  notif('✓ Excel izvožen');
+}
+
+// ── POTROŠNI MATERIAL ─────────────────────────────
+
+let potrosni = [];
+
+function renderPotrosni(){
+  const body = document.getElementById('potrosni-body');if(!body)return;
+  if(!potrosni.length){
+    body.innerHTML=`<tr><td colspan="7" style="text-align:center;padding:1.5rem;color:var(--text3)">Ni potrošnega materiala. Kliknite + Dodaj.</td></tr>`;
+    document.getElementById('potrosni-skupaj').textContent='0.00 €';
+    return;
+  }
+  body.innerHTML = potrosni.map((p,i)=>{
+    const strosek = (+p.cena||0)*(+p.kol||0);
+    return`<tr>
+      <td><input type="text" value="${p.naziv||''}" onchange="potrosni[${i}].naziv=this.value" placeholder="npr. Kartonska škatla"></td>
+      <td><select onchange="potrosni[${i}].enota=this.value" style="font-size:12px">
+        ${['kos','kg','l','m','m²'].map(e=>`<option${p.enota===e?' selected':''}>${e}</option>`).join('')}
+      </select></td>
+      <td><input type="number" value="${p.cena||''}" onchange="potrosni[${i}].cena=+this.value;renderPotrosni()" step="0.001" min="0" class="inp-blue"></td>
+      <td><input type="number" value="${p.kol||''}" onchange="potrosni[${i}].kol=+this.value;renderPotrosni()" step="1" min="0"></td>
+      <td class="td-mono" style="font-weight:500">${strosek.toFixed(2)} €</td>
+      <td><input type="text" value="${p.dobavitelj||''}" onchange="potrosni[${i}].dobavitelj=this.value" placeholder="—"></td>
+      <td><button class="btn btn-del" onclick="potrosni.splice(${i},1);renderPotrosni()">✕</button></td>
+    </tr>`;
+  }).join('');
+
+  const skupaj = potrosni.reduce((s,p)=>s+(+p.cena||0)*(+p.kol||0),0);
+  document.getElementById('potrosni-skupaj').textContent = skupaj.toFixed(2)+' €';
+}
+
+function addPotrosniRow(){
+  potrosni.push({naziv:'',enota:'kos',cena:0,kol:1,dobavitelj:''});
+  renderPotrosni();
+}
+
+function getPotrosniSkupaj(){
+  return potrosni.reduce((s,p)=>s+(+p.cena||0)*(+p.kol||0),0);
+}
+
+// ── QC KONTROLA ────────────────────────────────────
+
+let qcData = [];
+
+function renderQC(){
+  const body = document.getElementById('qc-body');if(!body)return;
+  if(!qcData.length){
+    body.innerHTML=`<tr><td colspan="7" style="text-align:center;padding:1.5rem;color:var(--text3)">Ni QC analiz. Kliknite + Dodaj.</td></tr>`;
+    document.getElementById('qc-skupaj').textContent='0.00 €';
+    return;
+  }
+  body.innerHTML = qcData.map((q,i)=>{
+    const strosek = (+q.cena||0)*(+q.kol||1);
+    return`<tr>
+      <td><input type="text" value="${q.naziv||''}" onchange="qcData[${i}].naziv=this.value" placeholder="npr. Mikrobiološka analiza"></td>
+      <td><select onchange="qcData[${i}].enota=this.value" style="font-size:12px">
+        ${['test','vzorec','serija','ura'].map(e=>`<option${q.enota===e?' selected':''}>${e}</option>`).join('')}
+      </select></td>
+      <td><input type="number" value="${q.cena||''}" onchange="qcData[${i}].cena=+this.value;renderQC()" step="0.01" min="0" class="inp-blue"></td>
+      <td><input type="number" value="${q.kol||1}" onchange="qcData[${i}].kol=+this.value;renderQC()" step="1" min="1"></td>
+      <td class="td-mono" style="font-weight:500">${strosek.toFixed(2)} €</td>
+      <td><input type="text" value="${q.laboratorij||''}" onchange="qcData[${i}].laboratorij=this.value" placeholder="—"></td>
+      <td><button class="btn btn-del" onclick="qcData.splice(${i},1);renderQC()">✕</button></td>
+    </tr>`;
+  }).join('');
+
+  const skupaj = qcData.reduce((s,q)=>s+(+q.cena||0)*(+q.kol||1),0);
+  document.getElementById('qc-skupaj').textContent = skupaj.toFixed(2)+' €';
+}
+
+function addQCRow(){
+  qcData.push({naziv:'',enota:'test',cena:0,kol:1,laboratorij:''});
+  renderQC();
+}
+
+function getQCSkupaj(){
+  return qcData.reduce((s,q)=>s+(+q.cena||0)*(+q.kol||1),0);
+}
+
+async function uvozFormulacijoStranke(input){
+  const file = input.files[0];if(!file)return;
+  const statusEl = document.getElementById('fd-uvoz-status');
+  const statusTxt = document.getElementById('fd-uvoz-status-text');
+  if(statusEl)statusEl.style.display='block';
+  if(statusTxt)statusTxt.innerHTML='<span style="color:var(--text2)">⟳ Claude bere formulacijo…</span>';
+
+  try{
+    const ext = file.name.split('.').pop().toLowerCase();
+    let vsebina = '';
+    let base64 = '';
+    let isPdf = ext==='pdf';
+
+    if(isPdf || ext==='xlsx' || ext==='xls'){
+      base64 = await new Promise((res,rej)=>{
+        const r=new FileReader();
+        r.onload=()=>res(r.result.split(',')[1]);
+        r.onerror=rej;
+        r.readAsDataURL(file);
+      });
+    } else {
+      // CSV/TXT — pošlji kot tekst
+      vsebina = await file.text();
+    }
+
+    const prompt = `Izlušči sestavine formulacije iz dokumenta in vrni SAMO JSON (brez besedila pred ali za JSON):
+{"naziv_izdelka":"","velikost_kapsule":"","tip_kapsule":"","skupaj_mg":null,"sestavine":[{"ime":"","kolicina":0,"enota":"mg","del":"","opomba":""}]}
+
+PRAVILA za kolicina:
+- Vzemi vrednost iz stolpca/polja "mg per capsule", "mg/capsule", "mg per cap", "mg/cap", "per capsule" ali podobno
+- Ce taksnega stolpca ni, vzemi vrednost iz "mg", "amount", "quantity" ali podobno
+- Enota je vedno "mg" razen ce je eksplicitno drugace (ml, %)
+- Vrni SAMO JSON.`;
+
+    let response;
+    if(isPdf){
+      response = await fetch('/api/claude',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:4000,
+          messages:[{role:'user',content:[
+            {type:'document',source:{type:'base64',media_type:'application/pdf',data:base64}},
+            {type:'text',text:prompt}
+          ]}]
+        })
+      });
+    } else if(ext==='xlsx'||ext==='xls'){
+      // Za Excel najprej preberi z XLSX in pošlji kot JSON
+      const buffer = await file.arrayBuffer();
+      const wb = XLSX.read(buffer,{type:'array'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const jsonData = XLSX.utils.sheet_to_json(ws,{defval:''});
+      vsebina = JSON.stringify(jsonData);
+      response = await fetch('/api/claude',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:4000,
+          messages:[{role:'user',content:`${prompt}\n\nPodatki iz Excel datoteke:\n${vsebina}`}]
+        })
+      });
+    } else {
+      response = await fetch('/api/claude',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:4000,
+          messages:[{role:'user',content:`${prompt}\n\nVsebina dokumenta:\n${vsebina}`}]
+        })
+      });
+    }
+
+    const data = await response.json();
+    let text = (data.content?.map(c=>c.text||'').join('')||'').replace(/```json|```/g,'').trim();
+
+    // Robustno parsiranje — izvleci JSON iz odgovora
+    let parsed;
+    try {
+      parsed = JSON.parse(text);
+    } catch(e) {
+      // Poskusi najti JSON objekt v besedilu
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if(jsonMatch){
+        try { parsed = JSON.parse(jsonMatch[0]); }
+        catch(e2) {
+          // Poskusi popraviti odrezan JSON — dodaj zaključne oklepaje
+          let fixed = jsonMatch[0];
+          const openB = (fixed.match(/\[/g)||[]).length;
+          const closeB = (fixed.match(/\]/g)||[]).length;
+          const openC = (fixed.match(/\{/g)||[]).length;
+          const closeC = (fixed.match(/\}/g)||[]).length;
+          // Zaključi odprte nize
+          if(fixed.endsWith(',')) fixed = fixed.slice(0,-1);
+          for(let i=0;i<openB-closeB;i++) fixed += ']';
+          for(let i=0;i<openC-closeC;i++) fixed += '}';
+          try { parsed = JSON.parse(fixed); }
+          catch(e3) { throw new Error('Ni mogoče prebrati odgovora. Poskusite z manjšim dokumentom.'); }
+        }
+      } else {
+        throw new Error('Ni mogoče prebrati odgovora.');
+      }
+    }
+
+    if(!parsed.sestavine?.length){
+      if(statusTxt)statusTxt.innerHTML='<span style="color:var(--danger)">⚠ Ni bilo mogoče prepoznati sestavin. Preverite format dokumenta.</span>';
+      return;
+    }
+
+    // Posodobi naziv če je bil prepoznan
+    if(parsed.naziv_izdelka){
+      const nazEl=document.getElementById('fd-naziv');
+      if(nazEl&&!nazEl.value)nazEl.value=parsed.naziv_izdelka;
+    }
+
+    // Prikaži predogled z ujemanjem
+    showUvozFormulacijePreview(parsed, file.name);
+
+  }catch(err){
+    if(statusTxt)statusTxt.innerHTML=`<span style="color:var(--danger)">⚠ Napaka: ${err.message}</span>`;
+  }
+  input.value='';
+}
+
+function showUvozFormulacijePreview(parsed, filename){
+  const statusEl=document.getElementById('fd-uvoz-status');
+  const statusTxt=document.getElementById('fd-uvoz-status-text');
+
+  // Za vsako sestavino poišči najboljše ujemanje v ceniku
+  const sestavineZUjemanjem = parsed.sestavine.map(s=>{
+    let najboljsi=null, score=0;
+    (cenikSestavineData||[]).forEach((c,ci)=>{
+      const sc = matchScore(s.ime, c.ime);
+      if(sc>score){score=sc;najboljsi={id:c.id,ime:c.ime,idx:ci};}
+    });
+    return{
+      ...s,
+      cenik_id: score>0.35?najboljsi?.id:null,
+      predlagano: score>0.35?najboljsi?.ime:null,
+      score,
+    };
+  });
+
+  const ujemanja = sestavineZUjemanjem.filter(s=>s.cenik_id).length;
+  const neujemanja = sestavineZUjemanjem.length - ujemanja;
+
+  statusTxt.innerHTML = `
+    <div style="margin-bottom:.75rem">
+      <span style="font-weight:500">Claude je prepoznal ${parsed.sestavine.length} sestavin</span>
+      iz <span style="font-family:var(--mono);font-size:11px">${filename}</span>
+      ${parsed.skupaj_mg?`· <span class="badge badge-gray">Skupaj: ${parsed.skupaj_mg} mg</span>`:''}
+      <span class="badge badge-green" style="margin-left:6px">${ujemanja} ujemanj v ceniku</span>
+      ${neujemanja>0?`<span class="badge badge-warn" style="margin-left:4px">${neujemanja} brez ujemanja</span>`:''}
+    </div>
+    <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th>Sestavina (iz dokumenta)</th>
+        <th>Količina</th>
+        <th>Enota</th>
+        <th>Del</th>
+        <th>Ujemanje v ceniku</th>
+        <th>Opomba</th>
+      </tr></thead>
+      <tbody>
+        ${sestavineZUjemanjem.map((s,i)=>`<tr style="${!s.cenik_id?'background:var(--warn-light)':''}">
+          <td style="font-weight:500;font-size:12px">${s.ime}</td>
+          <td class="td-mono">${s.kolicina}</td>
+          <td>${s.enota}</td>
+          <td>${s.del||'—'}</td>
+          <td>
+            <select id="uv-match-${i}" style="font-size:11px;width:100%">
+              <option value="">— Ni v ceniku / dodaj ročno —</option>
+              ${(cenikSestavineData||[]).map(c=>`<option value="${c.id}"${s.cenik_id===c.id?' selected':''}>${c.ime}</option>`).join('')}
+            </select>
+            ${s.predlagano&&s.score<0.8?`<div style="font-size:10px;color:var(--info);margin-top:2px">Predlog: ${s.predlagano} (${Math.round(s.score*100)}%)</div>`:''}
+          </td>
+          <td style="font-size:11px;color:var(--text3)">${s.opomba||'—'}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:1rem;justify-content:flex-end">
+      <button class="btn btn-sm" onclick="document.getElementById('fd-uvoz-status').style.display='none'">Prekliči</button>
+      <button class="btn btn-sm btn-primary" onclick="potrdiUvozFormulacije(${JSON.stringify(sestavineZUjemanjem).replace(/"/g,'&quot;')})">
+        ✓ Uvozi ${parsed.sestavine.length} sestavin
+      </button>
+    </div>`;
+
+  window._uvozFdData = sestavineZUjemanjem;
+}
+
+function potrdiUvozFormulacije(sestavine){
+  // Preberi dejanska ujemanja iz selectov
+  const rezultat = sestavine.map((s,i)=>{
+    const sel = document.getElementById(`uv-match-${i}`);
+    const cenikId = sel?.value||null;
+    const c = cenikId?(cenikSestavineData||[]).find(x=>x.id===cenikId):null;
+    return{
+      sestavina_id: cenikId||'',
+      ime_originalno: s.ime,
+      del: s.del||'',
+      kol: s.enota==='%'?s.kolicina:+s.kolicina||0,
+      enota: s.enota==='%'?'mg':s.enota||'mg',
+      izguba: 0,
+      min_ob: 0,
+      opomba: s.opomba||'',
+      // Če ni v ceniku, shrani originalno ime
+      _ime_za_prikaz: c?c.ime:s.ime,
+    };
+  });
+
+  // Dodaj k obstoječim ali zamenjaj
+  if(fdSestavine.length && confirm('Zamenjati obstoječe sestavine z uvoženimi?')){
+    fdSestavine = rezultat;
+  } else {
+    fdSestavine = [...fdSestavine, ...rezultat];
+  }
+
+  renderFDFormula();
+
+  const statusEl=document.getElementById('fd-uvoz-status');
+  const statusTxt=document.getElementById('fd-uvoz-status-text');
+  if(statusTxt)statusTxt.innerHTML=`<span style="color:var(--accent-text)">✓ Uvoženo ${rezultat.length} sestavin. Preverite in dopolnite manjkajoče sestavine v ceniku.</span>
+    <button class="btn btn-sm" onclick="document.getElementById('fd-uvoz-status').style.display='none'" style="margin-left:12px">Zapri</button>`;
+
+  notif(`✓ Uvoženo ${rezultat.length} sestavin`);
+}
+
+// ── FORMULACIJE ───────────────────────────────────
+
+let formulacijeData = [];
+let aktivnaFormulacija = null;
+let fdSestavine = [];
+
+async function loadFormulacije(){
+  const{data}=await sb.from('formule')
+    .select('*,stranke(podjetje)')
+    .order('created_at',{ascending:false});
+  formulacijeData = data||[];
+
+  // Posodobi filter stranke
+  const sel = document.getElementById('form-filter-stranka');
+  if(sel){
+    const strankeIds = [...new Set(formulacijeData.filter(f=>f.stranka_id).map(f=>f.stranka_id))];
+    const strankeOpcije = strankeIds.map(id=>{
+      const f = formulacijeData.find(x=>x.stranka_id===id);
+      return`<option value="${id}">${f?.stranke?.podjetje||id}</option>`;
+    }).join('');
+    sel.innerHTML='<option value="">Vse stranke</option>'+strankeOpcije;
+  }
+
+  renderFormulacije();
+}
+
+function filterFormulacije(){ renderFormulacije(); }
+
+function renderFormulacije(){
+  const el = document.getElementById('formulacije-lista');if(!el)return;
+  const q = (document.getElementById('form-search')?.value||'').toLowerCase();
+  const strankaFilter = document.getElementById('form-filter-stranka')?.value||'';
+
+  // Grupiraj po stevilki formulacije (vse verzije skupaj)
+  const grupirane = {};
+  formulacijeData.forEach(f=>{
+    const key = f.stevilka||f.id;
+    if(!grupirane[key])grupirane[key]=[];
+    grupirane[key].push(f);
+  });
+
+  let html = '';
+  Object.entries(grupirane).forEach(([key,verzije])=>{
+    // Sortiraj verzije — najnovejša prva
+    verzije.sort((a,b)=>b.verzija-a.verzija);
+    const zadnja = verzije[0];
+
+    // Filtri
+    if(q && !zadnja.naziv?.toLowerCase().includes(q) && !key.toLowerCase().includes(q)) return;
+    if(strankaFilter && zadnja.stranka_id !== strankaFilter) return;
+
+    const statusBadge = {
+      razvoj:'<span class="badge badge-warn">🔧 V razvoju</span>',
+      aktivna:'<span class="badge badge-green">✓ Aktivna</span>',
+      arhivirana:'<span class="badge badge-gray">📦 Arhivirana</span>',
+    }[zadnja.status||'razvoj']||'';
+
+    html+=`
+    <div class="card" style="margin-bottom:.875rem">
+      <div style="padding:.875rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="width:42px;height:42px;border-radius:var(--radius);background:var(--accent-light);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;font-weight:600;color:var(--accent-text);flex-shrink:0">${key}</div>
+          <div>
+            <div style="font-weight:500;font-size:14px">${zadnja.naziv||'—'}</div>
+            <div class="text-sm" style="margin-top:2px">
+              ${zadnja.stranke?.podjetje?`<span>${zadnja.stranke.podjetje}</span> · `:''}
+              <span>${zadnja.tip_kapsulacije||'—'}</span> ·
+              <span>${verzije.length} ${verzije.length===1?'verzija':'verzij'}</span> ·
+              <span>${new Date(zadnja.created_at).toLocaleDateString('sl-SI')}</span>
+            </div>
+          </div>
+        </div>
+        <div class="flex-gap">
+          ${statusBadge}
+          <span class="badge badge-blue" style="font-family:var(--mono)">v${zadnja.verzija||1}</span>
+          <span class="badge badge-gray">${(zadnja.sestavine||[]).length} sestavin</span>
+          <button class="btn btn-sm" onclick="odpriFormulacijo('${zadnja.id}')">Odpri</button>
+          <button class="btn btn-del" onclick="deleteFormulacija('${key}','${zadnja.naziv}')">✕</button>
+        </div>
+      </div>
+      ${verzije.length>1?`
+      <div style="padding:.5rem 1.25rem;border-top:1px solid var(--border);background:var(--surface2);display:flex;gap:8px;flex-wrap:wrap">
+        ${verzije.map(v=>`<button class="btn btn-sm" onclick="odpriFormulacijo('${v.id}')" style="font-family:var(--mono);font-size:11px">v${v.verzija||1}${v.id===zadnja.id?' ★':''}</button>`).join('')}
+      </div>`:''}
+    </div>`;
+  });
+
+  el.innerHTML = html||'<div class="empty">Ni formulacij. Ustvarite novo.</div>';
+}
+
+async function novaFormulacija(){
+  // Generiraj številko
+  const{count}=await sb.from('formule').select('*',{count:'exact',head:true});
+  const stevilka = 'F-'+String((count||0)+1).padStart(3,'0');
+  aktivnaFormulacija = null;
+  fdSestavine = [];
+  const g=id=>document.getElementById(id);
+  if(g('fd-naziv'))g('fd-naziv').value='';
+  if(g('fd-stevilka'))g('fd-stevilka').value=stevilka;
+  if(g('fd-opomba'))g('fd-opomba').value='Začetna verzija';
+  if(g('fd-status'))g('fd-status').value='razvoj';
+  if(g('fd-tip'))g('fd-tip').value='LIQUID';
+  if(g('fd-verzija-badge'))g('fd-verzija-badge').textContent='v1';
+  if(g('fd-title'))g('fd-title').textContent='Nova formulacija';
+  if(g('fd-sub'))g('fd-sub').textContent=stevilka+' — v1';
+  if(g('fd-verzije-list'))g('fd-verzije-list').innerHTML='<div class="text-sm">—</div>';
+  syncFDStrankaSelect();
+  renderFDFormula();
+  showPanel('formulacija-detail');
+}
+
+async function odpriFormulacijo(id){
+  const{data,error}=await sb.from('formule')
+    .select('*,stranke(podjetje)')
+    .eq('id',id).single();
+  if(error||!data){notif('Napaka pri nalaganju');return;}
+
+  aktivnaFormulacija = data;
+  fdSestavine = data.sestavine||[];
+
+  const g=id=>document.getElementById(id);
+  if(g('fd-naziv'))g('fd-naziv').value=data.naziv||'';
+  if(g('fd-stevilka'))g('fd-stevilka').value=data.stevilka||'';
+  if(g('fd-opomba'))g('fd-opomba').value=data.opomba||'';
+  if(g('fd-status'))g('fd-status').value=data.status||'razvoj';
+  if(g('fd-tip'))g('fd-tip').value=data.tip_kapsulacije||'LIQUID';
+  if(g('fd-verzija-badge'))g('fd-verzija-badge').textContent='v'+(data.verzija||1);
+  if(g('fd-title'))g('fd-title').textContent=data.naziv||'Formulacija';
+  if(g('fd-sub'))g('fd-sub').textContent=(data.stevilka||'—')+' — v'+(data.verzija||1);
+
+  // Vse verzije
+  const{data:vseVerzije}=await sb.from('formule')
+    .select('id,verzija,naziv,opomba,created_at,status')
+    .eq('stevilka',data.stevilka)
+    .order('verzija',{ascending:false});
+
+  const verzEl=g('fd-verzije-list');
+  if(verzEl && vseVerzije?.length){
+    verzEl.innerHTML=vseVerzije.map(v=>`
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="badge badge-blue" style="font-family:var(--mono)">v${v.verzija||1}</span>
+          <span>${v.opomba||'—'}</span>
+        </div>
+        <div class="flex-gap">
+          <span class="text-sm">${new Date(v.created_at).toLocaleDateString('sl-SI')}</span>
+          ${v.id!==id?`<button class="btn btn-sm" onclick="odpriFormulacijo('${v.id}')">Odpri</button>`:'<span class="badge badge-green">Trenutna</span>'}
+        </div>
+      </div>`).join('');
+  }
+
+  syncFDStrankaSelect(data.stranka_id);
+  renderFDFormula();
+  showPanel('formulacija-detail');
+}
+
+function syncFDStrankaSelect(selected){
+  const sel=document.getElementById('fd-stranka');if(!sel)return;
+  sel.innerHTML='<option value="">— Brez stranke —</option>'+
+    (strankeData||[]).map(s=>`<option value="${s.id}"${s.id===selected?' selected':''}>${s.podjetje}</option>`).join('');
+}
+
+function renderFDFormula(){
+  const body=document.getElementById('fd-formula-body');if(!body)return;
+  body.innerHTML=fdSestavine.map((f,i)=>{
+    const c=(cenikSestavineData||[]).find(x=>x.id===f.sestavina_id);
+    const cene = c ? TIER_COLS.map((col,ti)=>({kg:TIER_KG[ti],cena:c[col]})).filter(x=>x.cena) : [];
+    const minC = cene.length ? Math.min(...cene.map(x=>x.cena)) : 0;
+    const maxC = cene.length ? Math.max(...cene.map(x=>x.cena)) : 0;
+    const netoMg = (f.kol||0)*(1+(f.izguba||0)/100);
+    return`<tr>
+      <td><select onchange="fdSestavine[${i}].sestavina_id=this.value;renderFDFormula()" style="min-width:190px">
+        <option value="">— Izberi —</option>
+        ${(cenikSestavineData||[]).map(cs=>`<option value="${cs.id}"${f.sestavina_id===cs.id?' selected':''}>${cs.ime}</option>`).join('')}
+      </select></td>
+      <td><select onchange="fdSestavine[${i}].del=this.value" style="max-width:60px">
+        <option value=""${!f.del?' selected':''}>—</option>
+        <option value="A"${f.del==='A'?' selected':''}>A</option>
+        <option value="B"${f.del==='B'?' selected':''}>B</option>
+      </select></td>
+      <td><input type="number" value="${f.kol||0}" class="inp-blue" onchange="fdSestavine[${i}].kol=+this.value;renderFDFormula()" min="0" step="0.001"></td>
+      <td><select onchange="fdSestavine[${i}].enota=this.value;renderFDFormula()" style="max-width:60px">
+        <option${(f.enota||'mg')==='mg'?' selected':''}>mg</option>
+        <option${f.enota==='ml'?' selected':''}>ml</option>
+      </select></td>
+      <td><input type="number" value="${f.izguba||0}" onchange="fdSestavine[${i}].izguba=+this.value;renderFDFormula()" min="0" step="0.1"></td>
+      <td><input type="number" value="${f.min_ob||0}" onchange="fdSestavine[${i}].min_ob=+this.value" min="0" step="0.1"></td>
+      <td class="td-mono" style="font-weight:500;color:var(--accent-text)">${netoMg.toFixed(2)} mg</td>
+      <td>${cene.length?`<div style="font-size:10px;line-height:1.8">
+        ${cene.map(x=>`<span style="display:inline-block;margin-right:5px;white-space:nowrap">
+          <span style="color:var(--text3)">${x.kg}kg:</span>
+          <span style="font-family:var(--mono);font-weight:500;color:${x.cena===minC?'var(--accent-text)':x.cena===maxC?'var(--text2)':'var(--text)'}">${f2(x.cena)}</span>
+        </span>`).join('')}
+      </div>`:'<span class="text-sm">—</span>'}</td>
+      <td><button class="btn btn-del" onclick="fdSestavine.splice(${i},1);renderFDFormula()">✕</button></td>
+    </tr>`;
+  }).join('');
+  updateFDSummary();
+}
+
+function updateFDSummary(){
+  const skupajMg = fdSestavine.reduce((s,f)=>{
+    return s + (f.enota==='ml'?(f.kol||0)*1000:(f.kol||0));
+  },0);
+  let estCena=0;
+  fdSestavine.forEach(f=>{
+    const c=(cenikSestavineData||[]).find(x=>x.id===f.sestavina_id);if(!c)return;
+    estCena += ((f.kol||0)*(1+(f.izguba||0)/100)/1e6)*getCenikCena(c,100);
+  });
+  const set=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val;};
+  set('fd-skupaj-mg',skupajMg.toFixed(1)+' mg');
+  set('fd-stevilo',fdSestavine.filter(f=>f.sestavina_id).length);
+  set('fd-cena-kos',estCena>0?f4(estCena)+' €':'— €');
+  set('fd-skupaj-total',skupajMg.toFixed(1)+' mg');
+}
+
+function addFDRow(){
+  fdSestavine.push({sestavina_id:'',del:'',kol:100,enota:'mg',izguba:0,min_ob:0});
+  renderFDFormula();
+}
+
+async function shraniFormulacijo(){
+  const g=id=>document.getElementById(id);
+  const naziv=g('fd-naziv')?.value||'';
+  const stevilka=g('fd-stevilka')?.value||'';
+  if(!naziv){notif('⚠ Vnesite naziv formulacije',2500);return;}
+  if(!stevilka){notif('⚠ Vnesite številko formulacije',2500);return;}
+
+  const obj={
+    naziv,
+    stevilka,
+    stranka_id:g('fd-stranka')?.value||null,
+    tip_kapsulacije:g('fd-tip')?.value||'LIQUID',
+    status:g('fd-status')?.value||'razvoj',
+    opomba:g('fd-opomba')?.value||'',
+    sestavine:fdSestavine,
+    verzija:aktivnaFormulacija?.verzija||1,
+    updated_at:new Date().toISOString(),
+  };
+
+  let error;
+  if(aktivnaFormulacija){
+    ({error}=await sb.from('formule').update(obj).eq('id',aktivnaFormulacija.id));
+  } else {
+    obj.verzija=1;
+    obj.created_at=new Date().toISOString();
+    const res=await sb.from('formule').insert(obj).select().single();
+    error=res.error;
+    if(!error)aktivnaFormulacija=res.data;
+  }
+  if(error){notif('⚠ Napaka: '+error.message,3500);return;}
+  notif('✓ Formulacija shranjena');
+  await loadFormulacije();
+}
+
+async function novaVerzijaFormulacije(){
+  if(!aktivnaFormulacija){notif('Najprej shranite formulacijo',2500);return;}
+  const novaVerzija=(aktivnaFormulacija.verzija||1)+1;
+  const obj={
+    ...aktivnaFormulacija,
+    id:undefined,
+    verzija:novaVerzija,
+    opomba:'',
+    status:'razvoj',
+    created_at:new Date().toISOString(),
+    updated_at:new Date().toISOString(),
+  };
+  const{data,error}=await sb.from('formule').insert(obj).select().single();
+  if(error){notif('⚠ Napaka: '+error.message,3500);return;}
+  notif(`✓ Ustvarjena v${novaVerzija}`);
+  await odpriFormulacijo(data.id);
+}
+
+function naloziFormulacijoVInpute(){
+  if(!fdSestavine.length){notif('Ni sestavin v formulaciji',2500);return;}
+  formulaData=[...fdSestavine];
+  const g=id=>document.getElementById(id);
+  if(g('i-naziv')&&aktivnaFormulacija?.naziv)g('i-naziv').value=aktivnaFormulacija.naziv;
+  if(g('i-tip')&&aktivnaFormulacija?.tip_kapsulacije)g('i-tip').value=aktivnaFormulacija.tip_kapsulacije;
+  if(g('i-stranka')&&aktivnaFormulacija?.stranka_id)g('i-stranka').value=aktivnaFormulacija.stranka_id;
+  renderFormula();
+  showPanel('formula');
+  notif('✓ Formulacija naložena v Inpute');
+}
+
+async function deleteFormulacija(stevilka, naziv){
+  if(!confirm(`Izbrisati vse verzije formulacije ${stevilka} (${naziv})?\nTega dejanja ni mogoče razveljaviti.`))return;
+  const{error}=await sb.from('formule').delete().eq('stevilka',stevilka);
+  if(error){notif('⚠ Napaka: '+error.message,3500);return;}
+  notif(`✓ Formulacija ${stevilka} izbrisana`);
+  await loadFormulacije();
+}
+
+function dodajRocniArtikel(){
+  novaPrv.artikli.push({
+    naziv_na_racunu:'Nova sestavina',
+    kolicina:0, enota:'kg', cena_na_enoto:0, skupaj:0,
+    lot:'', expiry:'', alergeni:[],
+    sestavina_id:null, predlagano:null, score:0, potrjeno:false,
+    coa_done:false, coa_filename:'', coa_status:'pending',
+  });
+  const card=document.getElementById('prv-artikli-card');
+  if(card)card.style.display='block';
+  renderPrvArtikli();
+}
+
+async function urediPrevzemnico(id){
+  const{data,error}=await sb.from('prevzemnice').select('*').eq('id',id).single();
+  if(error||!data){notif('Napaka pri nalaganju',2500);return;}
+  novaPrv.artikli=(data.artikli||[]).map(a=>({...a,coa_status:a.coa_done?'done':'pending'}));
+  const g=id=>document.getElementById(id);
+  if(g('prv-stevilka'))g('prv-stevilka').value=data.stevilka||'';
+  if(g('prv-datum'))g('prv-datum').value=data.datum||'';
+  if(g('prv-dobavitelj'))g('prv-dobavitelj').value=data.dobavitelj||'';
+  if(g('prv-racun-st'))g('prv-racun-st').value=data.racun_stevilka||'';
+  novaPrv._editId=id;
+  const card=document.getElementById('prv-artikli-card');
+  if(card)card.style.display='block';
+  const btn=document.getElementById('prv-potrdi-btn');
+  if(btn){btn.style.display='block';btn.textContent='Posodobi prevzem';}
+  renderPrvArtikli();
+  showPanel('nova-prevzemnica');
+  notif('Prevzemnica nalozena za urejanje');
+}
+
+// ── RAZDELKI SKLADIŠČA ────────────────────────────
+let razdelkiData = [];
+
+async function loadRazdelki(){
+  const{data}=await sb.from('skladisce_razdelki').select('*').eq('aktiven',true).order('ime');
+  razdelkiData=data||[];
+}
+
+function razdelkiSelect(selected=''){
+  return razdelkiData.map(r=>`<option value="${r.id}"${r.id===selected?' selected':''}>${r.ime}</option>`).join('');
+}
+
+// ── HELPERS ───────────────────────────────────────
+
+function matchScore(a, b){
+  if(!a||!b)return 0;
+  const al=a.toLowerCase(), bl=b.toLowerCase();
+  if(al===bl)return 1;
+  if(al.includes(bl)||bl.includes(al))return 0.8;
+  const aw=al.split(/\s+/), bw=bl.split(/\s+/);
+  const skupne=aw.filter(w=>w.length>3&&bw.some(bww=>bww.includes(w)||w.includes(bww)));
+  return skupne.length/Math.max(aw.length,bw.length);
+}
+
+// ── PONUDBE ───────────────────────────────────────
+
+let ponudbeData = [];
+let aktivnaPonudba = {
+  stevilka:'', naziv:'', stranka_id:null, tip:'LIQUID',
+  stroj_idx:0, marza:20, veljavnost:'',
+  sestavine:[], kolicine:[100000,500000,1000000],
+  rezultati:[], status:'osnutek',
+};
+
+async function loadPonudbe(){
+  const{data}=await sb.from('ponudbe').select('*,stranke(podjetje)').order('created_at',{ascending:false}).limit(50);
+  ponudbeData=data||[];
+  renderPonudbe();
+}
+
+function renderPonudbe(){
+  const el=document.getElementById('ponudbe-lista');if(!el)return;
+  if(!ponudbeData.length){el.innerHTML='<div class="empty">Ni ponudb. Ustvarite prvo ponudbo.</div>';return;}
+  el.innerHTML=ponudbeData.map(p=>`
+    <div class="card" style="margin-bottom:.875rem">
+      <div style="padding:.875rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-weight:500;font-size:14px">${p.naziv||'—'} <span class="badge badge-blue" style="font-family:var(--mono);font-size:10px">${p.stevilka||''}</span></div>
+          <div class="text-sm" style="margin-top:3px">
+            ${p.stranke?.podjetje||'—'} · ${p.tip||'—'} ·
+            ${p.sestavine?.length||0} sestavin ·
+            ${new Date(p.created_at).toLocaleDateString('sl-SI')}
+            ${p.veljavnost?` · Veljavno do: ${p.veljavnost}`:''}
+          </div>
+        </div>
+        <div class="flex-gap">
+          <span class="badge ${p.status==='poslana'?'badge-green':p.status==='sprejeta'?'badge-blue':'badge-gray'}">${p.status||'osnutek'}</span>
+          <button class="btn btn-sm" onclick="odpriPonudbo('${p.id}')">Odpri</button>
+          <button class="btn btn-sm" onclick="izvozExcelDobaviteljiById('${p.id}')">📊 Excel</button>
+          <button class="btn btn-del" onclick="deletePonudba('${p.id}')">✕</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function initNovaPonudba(){
+  const leto=new Date().getFullYear();
+  const st=String((ponudbeData.length||0)+1).padStart(3,'0');
+  aktivnaPonudba={
+    stevilka:`PON-${leto}-${st}`, naziv:'', stranka_id:null,
+    tip:'LIQUID', stroj_idx:0, marza:20, veljavnost:'',
+    sestavine:[], kolicine:[100000,500000,1000000], rezultati:[], status:'osnutek',
+  };
+  const g=id=>document.getElementById(id);
+  if(g('np-stevilka'))g('np-stevilka').value=aktivnaPonudba.stevilka;
+  if(g('np-naziv'))g('np-naziv').value='';
+  if(g('np-marza'))g('np-marza').value=20;
+  if(g('np-title'))g('np-title').textContent='Nova ponudba';
+  if(g('np-form-status'))g('np-form-status').textContent='— ni naložena';
+  if(g('np-sestavine-card'))g('np-sestavine-card').style.display='none';
+  if(g('np-kolicine-card'))g('np-kolicine-card').style.display='none';
+  if(g('np-rezultat-card'))g('np-rezultat-card').style.display='none';
+  if(g('np-excel-btn'))g('np-excel-btn').style.display='none';
+  if(g('np-shrani-btn'))g('np-shrani-btn').style.display='none';
+
+  // Nastavi datum veljavnosti = danes + 30 dni
+  const vel=new Date(Date.now()+30*24*3600*1000).toISOString().slice(0,10);
+  if(g('np-veljavnost'))g('np-veljavnost').value=vel;
+
+  // Sync stranka select
+  const ssel=g('np-stranka');
+  if(ssel)ssel.innerHTML='<option value="">— Izberi stranko —</option>'+
+    (strankeData||[]).map(s=>`<option value="${s.id}">${s.podjetje}</option>`).join('');
+
+  // Sync stroj select
+  const stsel=g('np-stroj');
+  if(stsel)stsel.innerHTML=(strojData||[]).map((s,i)=>`<option value="${i}">${s.ime} — ${s.tip}</option>`).join('');
+}
+
+async function uvozFormulacijoPonudba(input){
+  const file=input.files[0];if(!file)return;
+  const statusEl=document.getElementById('np-form-status');
+  if(statusEl)statusEl.innerHTML='<span style="color:var(--warn)">⟳ Claude bere formulacijo…</span>';
+
+  try{
+    const ext=file.name.split('.').pop().toLowerCase();
+    let base64='', vsebina='', isPdf=ext==='pdf';
+
+    if(isPdf||ext==='xlsx'||ext==='xls'){
+      base64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file);});
+    } else {
+      vsebina=await file.text();
+    }
+
+    const prompt=`Izlušči sestavine formulacije iz dokumenta in vrni SAMO JSON:
+{"naziv_izdelka":"","sestavine":[{"ime":"","kolicina":0,"enota":"mg","del":"","opomba":""}]}
+PRAVILA: kolicina = vrednost iz "mg per capsule" ali "mg/cap" ali "mg". Vrni SAMO JSON.`;
+
+    let resp;
+    if(isPdf){
+      resp=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:4000,
+          messages:[{role:'user',content:[{type:'document',source:{type:'base64',media_type:'application/pdf',data:base64}},{type:'text',text:prompt}]}]})});
+    } else if(ext==='xlsx'||ext==='xls'){
+      const buffer=await file.arrayBuffer();
+      const wb=XLSX.read(buffer,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      vsebina=JSON.stringify(XLSX.utils.sheet_to_json(ws,{defval:''}));
+      resp=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:4000,messages:[{role:'user',content:`${prompt}\n\nExcel podatki:\n${vsebina}`}]})});
+    } else {
+      resp=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:4000,messages:[{role:'user',content:`${prompt}\n\n${vsebina}`}]})});
+    }
+
+    const data=await resp.json();
+    let text=(data.content?.map(c=>c.text||'').join('')||'').replace(/```json|```/g,'').trim();
+    let parsed;
+    try{ parsed=JSON.parse(text); }
+    catch(e){
+      const m=text.match(/\{[\s\S]*\}/);
+      if(m){ try{ parsed=JSON.parse(m[0]); }catch(e2){ throw new Error('Napaka pri branju formulacije.'); } }
+      else throw new Error('Napaka pri branju formulacije.');
+    }
+
+    // Nastavi naziv
+    if(parsed.naziv_izdelka){
+      const nEl=document.getElementById('np-naziv');
+      if(nEl&&!nEl.value)nEl.value=parsed.naziv_izdelka;
+    }
+
+    // Poveži sestavine s cenikov
+    aktivnaPonudba.sestavine=(parsed.sestavine||[]).map(s=>{
+      let best=null,score=0;
+      (cenikSestavineData||[]).forEach(c=>{
+        const sc=matchScore(s.ime,c.ime);
+        if(sc>score){score=sc;best=c;}
+      });
+      const cena=best&&score>0.3?getCenikCena(best,100):0;
+      return{
+        ime:s.ime, kolicina:+s.kolicina||0, enota:s.enota||'mg', del:s.del||'',
+        opomba:s.opomba||'',
+        cenik_id:score>0.3?best?.id:null,
+        cenik_ime:score>0.3?best?.ime:null,
+        cena_kg:cena,
+        dobavitelj:best?.dobavitelj||'',
+        iz_cenika:score>0.3,
+      };
+    });
+
+    renderNPSestavine();
+    renderNPKolicine();
+
+    const g=id=>document.getElementById(id);
+    if(g('np-sestavine-card'))g('np-sestavine-card').style.display='block';
+    if(g('np-kolicine-card'))g('np-kolicine-card').style.display='block';
+    if(g('np-rezultat-card'))g('np-rezultat-card').style.display='block';
+    if(g('np-excel-btn'))g('np-excel-btn').style.display='block';
+    if(g('np-shrani-btn'))g('np-shrani-btn').style.display='block';
+    if(g('np-zaloga-btn'))g('np-zaloga-btn').style.display='block';
+
+    const ujemanja=aktivnaPonudba.sestavine.filter(s=>s.iz_cenika).length;
+    if(statusEl)statusEl.innerHTML=`<span style="color:var(--accent-text)">✓ ${aktivnaPonudba.sestavine.length} sestavin · ${ujemanja} v ceniku</span>`;
+
+  }catch(err){
+    if(statusEl)statusEl.innerHTML=`<span style="color:var(--danger)">⚠ ${err.message}</span>`;
+  }
+  input.value='';
+}
+
+function renderNPSestavine(){
+  const body=document.getElementById('np-sestavine-body');if(!body)return;
+  body.innerHTML=aktivnaPonudba.sestavine.map((s,i)=>{
+    // Status glede na zalogo in cenik
+    let statusHtml='<span class="badge badge-gray" style="font-size:10px">—</span>';
+    let zalogoHtml='<span class="text-sm">—</span>';
+
+    if(s._zaloga_preverjena){
+      const naZalogi = s._zaloga_kg||0;
+      const maxPotrebno = s._max_kg||0;
+      if(naZalogi>=maxPotrebno){
+        statusHtml='<span class="badge badge-green" style="font-size:10px">✓ Dovolj na zalogi</span>';
+        zalogoHtml=`<span class="text-mono" style="color:var(--accent-text)">${f4(naZalogi)} kg</span>`;
+      } else if(naZalogi>0){
+        const manjka=maxPotrebno-naZalogi;
+        statusHtml=`<span class="badge badge-warn" style="font-size:10px">⚠ Manjka ${f4(manjka)} kg</span>`;
+        zalogoHtml=`<span class="text-mono" style="color:var(--warn)">${f4(naZalogi)} kg</span>`;
+      } else {
+        statusHtml='<span class="badge badge-red" style="font-size:10px">✗ Ni na zalogi</span>';
+        zalogoHtml='<span class="text-sm" style="color:var(--danger)">0 kg</span>';
+      }
+    } else if(s.iz_cenika){
+      statusHtml='<span class="badge badge-blue" style="font-size:10px">V ceniku</span>';
+    }
+
+    return`<tr style="${s._zaloga_preverjena&&!s._zaloga_kg?'background:var(--danger-light)':s._zaloga_preverjena&&s._zaloga_kg<(s._max_kg||0)?'background:var(--warn-light)':''}">
+      <td>
+        <input type="text" value="${s.ime}" onchange="aktivnaPonudba.sestavine[${i}].ime=this.value" style="min-width:180px">
+        ${s.cenik_ime&&s.cenik_ime!==s.ime?`<div style="font-size:10px;color:var(--info)">→ ${s.cenik_ime}</div>`:''}
+      </td>
+      <td><input type="number" value="${s.kolicina}" class="inp-blue" onchange="aktivnaPonudba.sestavine[${i}].kolicina=+this.value" min="0" step="0.001" style="max-width:90px"></td>
+      <td><select onchange="aktivnaPonudba.sestavine[${i}].enota=this.value" style="max-width:65px;font-size:12px">
+        <option${s.enota==='mg'?' selected':''}>mg</option>
+        <option${s.enota==='ml'?' selected':''}>ml</option>
+      </select></td>
+      <td><input type="text" value="${s.dobavitelj||''}" onchange="aktivnaPonudba.sestavine[${i}].dobavitelj=this.value" placeholder="—" style="min-width:120px"></td>
+      <td><div style="display:flex;gap:4px;align-items:center">
+        <input type="number" value="${s.cena_kg||''}" class="inp-blue" onchange="aktivnaPonudba.sestavine[${i}].cena_kg=+this.value" min="0" step="0.01" placeholder="0.00" style="max-width:100px;font-family:var(--mono)">
+        <span class="text-sm">€/kg</span>
+      </div></td>
+      <td>${zalogoHtml}</td>
+      <td>${statusHtml}</td>
+      <td><button class="btn btn-del" onclick="aktivnaPonudba.sestavine.splice(${i},1);renderNPSestavine()">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+
+async function preveriZalogoPonudba(){
+  if(!aktivnaPonudba.sestavine.length){notif('Ni sestavin',2500);return;}
+  if(!aktivnaPonudba.kolicine.length){notif('Vnesite količine',2500);return;}
+
+  notif('⟳ Preverjam zalogo…');
+
+  // Naloži zalogo iz Supabase
+  const{data:zalogaDB}=await sb.from('zaloga').select('sestavina_id,sestavina_ime,kolicina,enota,lot,expiry_date').eq('status','aktivna');
+
+  // Za vsako sestavino izračunaj max potrebno kg
+  const maxKol=Math.max(...aktivnaPonudba.kolicine);
+  const maxKolOb=Math.ceil(maxKol*1.03);
+
+  aktivnaPonudba.sestavine=aktivnaPonudba.sestavine.map(s=>{
+    const kol_mg=s.kolicina||0;
+    const maxKg=(kol_mg/1e6)*maxKolOb;
+
+    // Poišči na zalogi po sestavina_id ali imenu
+    const zalogaLoti=(zalogaDB||[]).filter(z=>
+      (s.cenik_id&&z.sestavina_id===s.cenik_id)||
+      z.sestavina_ime?.toLowerCase()===s.ime.toLowerCase()
+    );
+    const zalogaKg=zalogaLoti.reduce((sum,z)=>sum+(+z.kolicina||0),0);
+
+    return{
+      ...s,
+      _zaloga_preverjena:true,
+      _zaloga_kg:zalogaKg,
+      _max_kg:maxKg,
+      _zaloga_loti:zalogaLoti,
+    };
+  });
+
+  renderNPSestavine();
+
+  // Povzetek
+  const dovolj=aktivnaPonudba.sestavine.filter(s=>s._zaloga_kg>=(s._max_kg||0)).length;
+  const manjka=aktivnaPonudba.sestavine.filter(s=>s._zaloga_kg<(s._max_kg||0)&&s._zaloga_kg>0).length;
+  const ni=aktivnaPonudba.sestavine.filter(s=>!s._zaloga_kg).length;
+
+  notif(`✓ Zaloga preverjena: ${dovolj} dovolj · ${manjka} delno · ${ni} ni na zalogi`);
+}
+
+function addNPSestavina(){
+  aktivnaPonudba.sestavine.push({ime:'',kolicina:0,enota:'mg',del:'',dobavitelj:'',cena_kg:0,iz_cenika:false});
+  renderNPSestavine();
+  const card=document.getElementById('np-sestavine-card');
+  if(card)card.style.display='block';
+}
+
+function renderNPKolicine(){
+  const el=document.getElementById('np-kolicine-rows');if(!el)return;
+  el.innerHTML=aktivnaPonudba.kolicine.map((k,i)=>`
+    <div class="kol-row">
+      <input type="number" value="${k}" min="1000" step="1000" class="inp-blue text-mono"
+        onchange="aktivnaPonudba.kolicine[${i}]=+this.value" style="max-width:160px">
+      <span class="text-sm">kapsul</span>
+      ${aktivnaPonudba.kolicine.length>1?`<button class="btn btn-del btn-sm" onclick="aktivnaPonudba.kolicine.splice(${i},1);renderNPKolicine()">✕</button>`:''}
+    </div>`).join('');
+}
+
+function addNPKolicina(){
+  aktivnaPonudba.kolicine.push(1000000);
+  renderNPKolicine();
+}
+
+function izracunajPonudbo(){
+  const stroj=strojData[+document.getElementById('np-stroj')?.value||0]||strojData[0];
+  const marza=(+document.getElementById('np-marza')?.value||20)/100;
+  const odpad=0.03;
+
+  aktivnaPonudba.rezultati=aktivnaPonudba.kolicine.map(kol=>{
+    const kolOb=Math.ceil(kol*(1+odpad));
+
+    // Sestavine
+    let sest_skupaj=0;
+    const sest_d=aktivnaPonudba.sestavine.map(s=>{
+      const kol_mg=(s.kolicina||0);
+      const kg=(kol_mg/1e6)*kolOb;
+      const strosek=kg*(s.cena_kg||0);
+      sest_skupaj+=strosek;
+      return{...s, kg, strosek};
+    });
+
+    // Kapsulacija
+    const kaps_cena=stroj?getStrojCena(stroj,kol):0;
+    const kaps_strosek=kaps_cena*kolOb;
+
+    const skupaj=sest_skupaj+kaps_strosek;
+    const marza_val=marza>0?skupaj*(marza/(1-marza)):0;
+    const predlagana=skupaj+marza_val;
+
+    return{kol,kolOb,sest_d,sest_skupaj,kaps_cena,kaps_strosek,skupaj,marza_val,predlagana};
+  });
+
+  renderNPRezultat();
+}
+
+function renderNPRezultat(){
+  const el=document.getElementById('np-rezultat-wrap');if(!el)return;
+  if(!aktivnaPonudba.rezultati.length){el.innerHTML='<div class="text-sm">Kliknite ▶ Izračunaj.</div>';return;}
+
+  // Primerjalna tabela
+  let html=`<div class="tbl-wrap"><table>
+    <thead><tr>
+      <th>Količina</th>
+      <th class="td-right">Sestav. strošek</th>
+      <th class="td-right">Kapsulacija</th>
+      <th class="td-right">Skupaj strošek</th>
+      <th class="td-right">Cena/kos</th>
+      <th class="td-right">Cena/1.000</th>
+      <th class="td-right">Predl. cena</th>
+      <th class="td-right">Marža</th>
+    </tr></thead>
+    <tbody>
+    ${aktivnaPonudba.rezultati.map(r=>`<tr>
+      <td style="font-weight:500;font-family:var(--mono)">${fN(r.kol)}</td>
+      <td class="td-mono">${f2(r.sest_skupaj)} €</td>
+      <td class="td-mono">${f2(r.kaps_strosek)} €</td>
+      <td class="td-mono">${f2(r.skupaj)} €</td>
+      <td class="td-mono">${f4(r.skupaj/r.kol)} €</td>
+      <td class="td-mono">${f2(r.skupaj/r.kol*1000)} €</td>
+      <td class="td-mono" style="color:var(--accent-text);font-weight:500">${f2(r.predlagana)} €</td>
+      <td class="td-mono" style="color:var(--accent-text)">${f2(r.marza_val)} €</td>
+    </tr>`).join('')}
+    </tbody>
+  </table></div>`;
+
+  // Razčlenitev sestavin za vsako količino
+  html += aktivnaPonudba.rezultati.map(r=>`
+    <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">
+      <div style="font-weight:500;margin-bottom:.5rem">${fN(r.kol)} kapsul — razčlenitev</div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Sestavina</th><th>mg/kaps</th><th class="td-right">kg potrebno</th><th class="td-right">Cena/kg</th><th class="td-right">Strošek</th></tr></thead>
+        <tbody>
+          ${r.sest_d.map(s=>`<tr>
+            <td>${s.ime}</td>
+            <td class="td-mono">${s.kolicina} mg</td>
+            <td class="td-mono">${f4(s.kg)} kg</td>
+            <td class="td-mono">${s.cena_kg?f2(s.cena_kg)+' €':'<span class="badge badge-warn" style="font-size:10px">Ni cene</span>'}</td>
+            <td class="td-mono">${s.cena_kg?f2(s.strosek)+' €':'—'}</td>
+          </tr>`).join('')}
+          <tr style="font-weight:500;border-top:2px solid var(--border)">
+            <td colspan="4">Skupaj sestavine</td>
+            <td class="td-mono">${f2(r.sest_skupaj)} €</td>
+          </tr>
+        </tbody>
+      </table></div>
+    </div>`).join('');
+
+  el.innerHTML=html;
+}
+
+function izvozExcelDobavitelji(){
+  if(!aktivnaPonudba.sestavine.length){notif('Ni sestavin za izvoz',2500);return;}
+
+  // Pripravi podatke — ena vrstica na sestavino, stolpci za vsako količino
+  const header=['Sestavina','mg/kapsulo','Enota','Dobavitelj','Cena/kg (€)','Na zalogi (kg)','Status'];
+  const kolHeader=aktivnaPonudba.kolicine.map(k=>`Potrebno kg (${fN(k)} kaps)`);
+
+  const rows=aktivnaPonudba.sestavine.map(s=>{
+    const naZalogi=s._zaloga_kg||0;
+    const status=s._zaloga_preverjena?(naZalogi>=(s._max_kg||0)?'Dovolj':naZalogi>0?'Delno':'Ni na zalogi'):'Ni preverjeno';
+    const row=[
+      s.ime, s.kolicina, s.enota,
+      s.dobavitelj||'',
+      s.cena_kg||'',
+      naZalogi||'',
+      status,
+    ];
+    aktivnaPonudba.kolicine.forEach(kol=>{
+      const kolOb=Math.ceil(kol*1.03);
+      const kg=(s.kolicina/1e6)*kolOb;
+      // Odštej zalogo
+      const potrebno=Math.max(0,kg-naZalogi);
+      row.push(+potrebno.toFixed(4));
+    });
+    return row;
+  });
+
+  // Ustvari Excel
+  const ws=XLSX.utils.aoa_to_sheet([[...header,...kolHeader],...rows]);
+  // Stil glave
+  ws['!cols']=[{wch:30},{wch:12},{wch:8},{wch:20},{wch:12},{wch:10},...aktivnaPonudba.kolicine.map(()=>({wch:18}))];
+
+  // Dodaj povpraševanje vrstico
+  const nazPonudba=document.getElementById('np-naziv')?.value||'ponudba';
+  const ws2Data=[
+    ['POVPRAŠEVANJE ZA CENE SESTAVIN','','','','','',''],
+    ['Ponudba:',nazPonudba,'','','','',''],
+    ['Datum:',new Date().toLocaleDateString('sl-SI'),'','','','',''],
+    ['','','','','','',''],
+    ['OPOMBA: Stolpec "Potrebno naročiti" že upošteva obstoječo zalogo.','','','','','',''],
+    ['','','','','','',''],
+    [...header,...kolHeader.map(h=>'NAROČITI: '+h)],
+    ...rows,
+    ['','','','','','',''],
+    ['Prosimo za cene za navedene količine. Hvala za ponudbo.'],
+  ];
+  const ws2=XLSX.utils.aoa_to_sheet(ws2Data);
+  ws2['!cols']=[{wch:30},{wch:12},{wch:8},{wch:20},{wch:12},{wch:14},{wch:16},...aktivnaPonudba.kolicine.map(()=>({wch:20}))];
+
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws2,'Povpraševanje dobavitelji');
+  XLSX.utils.book_append_sheet(wb,ws,'Sestavine');
+
+  const datum=new Date().toISOString().slice(0,10);
+  const naziv=(document.getElementById('np-naziv')?.value||'ponudba').replace(/\s+/g,'_');
+  XLSX.writeFile(wb,`poizvedba_dobavitelji_${naziv}_${datum}.xlsx`);
+  notif('✓ Excel za dobavitelje izvožen');
+}
+
+async function izvozExcelDobaviteljiById(id){
+  const{data}=await sb.from('ponudbe').select('*').eq('id',id).single();
+  if(!data)return;
+  aktivnaPonudba={...data};
+  izvozExcelDobavitelji();
+}
+
+async function shraniPonudbo(){
+  const g=id=>document.getElementById(id);
+  const obj={
+    stevilka:g('np-stevilka')?.value||aktivnaPonudba.stevilka,
+    naziv:g('np-naziv')?.value||'',
+    stranka_id:g('np-stranka')?.value||null,
+    tip:g('np-tip')?.value||'LIQUID',
+    marza:+g('np-marza')?.value||20,
+    veljavnost:g('np-veljavnost')?.value||null,
+    sestavine:aktivnaPonudba.sestavine,
+    kolicine:aktivnaPonudba.kolicine,
+    rezultati:aktivnaPonudba.rezultati,
+    status:'osnutek',
+    created_by:currentUser?.id,
+  };
+
+  let error;
+  if(aktivnaPonudba.id){
+    ({error}=await sb.from('ponudbe').update({...obj,updated_at:new Date().toISOString()}).eq('id',aktivnaPonudba.id));
+  } else {
+    const res=await sb.from('ponudbe').insert({...obj,created_at:new Date().toISOString()}).select().single();
+    error=res.error;
+    if(!error)aktivnaPonudba.id=res.data.id;
+  }
+  if(error){notif('⚠ Napaka: '+error.message,3500);return;}
+  notif('✓ Ponudba shranjena');
+  await loadPonudbe();
+}
+
+async function odpriPonudbo(id){
+  const{data}=await sb.from('ponudbe').select('*,stranke(podjetje)').eq('id',id).single();
+  if(!data)return;
+  aktivnaPonudba={...data};
+
+  const g=id=>document.getElementById(id);
+  if(g('np-stevilka'))g('np-stevilka').value=data.stevilka||'';
+  if(g('np-naziv'))g('np-naziv').value=data.naziv||'';
+  if(g('np-marza'))g('np-marza').value=data.marza||20;
+  if(g('np-veljavnost'))g('np-veljavnost').value=data.veljavnost||'';
+  if(g('np-tip'))g('np-tip').value=data.tip||'LIQUID';
+  if(g('np-title'))g('np-title').textContent=data.naziv||'Ponudba';
+  if(g('np-form-status'))g('np-form-status').innerHTML=`<span style="color:var(--accent-text)">✓ ${data.sestavine?.length||0} sestavin</span>`;
+
+  // Sync selects
+  const ssel=g('np-stranka');
+  if(ssel){
+    ssel.innerHTML='<option value="">— Izberi stranko —</option>'+
+      (strankeData||[]).map(s=>`<option value="${s.id}"${s.id===data.stranka_id?' selected':''}>${s.podjetje}</option>`).join('');
+  }
+  const stsel=g('np-stroj');
+  if(stsel)stsel.innerHTML=(strojData||[]).map((s,i)=>`<option value="${i}">${s.ime} — ${s.tip}</option>`).join('');
+
+  if(data.sestavine?.length){
+    renderNPSestavine();
+    renderNPKolicine();
+    if(data.rezultati?.length)renderNPRezultat();
+    ['np-sestavine-card','np-kolicine-card','np-rezultat-card','np-excel-btn','np-shrani-btn','np-zaloga-btn'].forEach(id=>{
+      const el=g(id);if(el)el.style.display='block';
+    });
+  }
+
+  showPanel('nova-ponudba');
+}
+
+async function deletePonudba(id){
+  if(!confirm('Izbrisati ponudbo?'))return;
+  await sb.from('ponudbe').delete().eq('id',id);
+  notif('✓ Ponudba izbrisana');
+  await loadPonudbe();
+}
+
+// ── NAROČILNICE ───────────────────────────────────
+let narocilniceData=[];
+let aktivnaNarocilnica={stevilka:'',nalog_id:null,dobavitelj:'',datum:'',datum_dobave:'',status:'osnutek',opomba:'',artikli:[],_id:null};
+
+async function loadNarocilnice(){
+  const{data}=await sb.from('narocilnice').select('*,delovni_nalogi(stevilka,naziv)').order('created_at',{ascending:false});
+  narocilniceData=data||[];
+  renderNarocilnice();
+}
+
+function renderNarocilnice(){
+  const el=document.getElementById('narocilnice-lista');if(!el)return;
+  if(!narocilniceData.length){el.innerHTML='<div class="empty">Ni narocilnic.</div>';return;}
+  const statusMap={osnutek:'badge-gray',poslana:'badge-blue',delno_prispelo:'badge-warn',prispelo:'badge-green',zaprta:'badge-gray'};
+  el.innerHTML=narocilniceData.map(n=>`
+    <div class="card" style="margin-bottom:.875rem">
+      <div style="padding:.875rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-weight:500;font-size:14px">${n.stevilka} <span class="text-sm">- ${n.dobavitelj||'-'}</span></div>
+          <div class="text-sm">${n.datum||'-'} Nalog: ${n.delovni_nalogi?.stevilka||'-'} ${(n.artikli||[]).length} artiklov</div>
+        </div>
+        <div class="flex-gap">
+          <span class="badge ${statusMap[n.status]||'badge-gray'}">${n.status}</span>
+          <button class="btn btn-sm" onclick="odpriNarocilnico('${n.id}')">Odpri</button>
+          <button class="btn btn-del" onclick="deleteNarocilnica('${n.id}')">X</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+async function ustvariNarocilnicoIzNaloga(nalogId){
+  const{data:nalog}=await sb.from('delovni_nalogi').select('*').eq('id',nalogId).single();
+  if(!nalog){notif('Nalog ni najden',2500);return;}
+  const leto=new Date().getFullYear();
+  const{count}=await sb.from('narocilnice').select('*',{count:'exact',head:true});
+  const stevilka=`NAR-${leto}-${String((count||0)+1).padStart(3,'0')}`;
+  const sestavine=nalog.sestavine_coa||[];
+  const artikli=sestavine.map(s=>{
+    const c=(cenikSestavineData||[]).find(x=>x.id===s.sestavina_id);
+    return{sestavina_id:s.sestavina_id||null,sestavina_ime:s.ime||c?.ime||'?',
+      kolicina:+(s.kg||0).toFixed(4),enota:'kg',dobavitelj:c?.dobavitelj||'',
+      cena_enoto:0,skupaj:0,tip:'nalog',status:'naroceno'};
+  });
+  aktivnaNarocilnica={stevilka,nalog_id:nalogId,nalog_stevilka:nalog.stevilka,nalog_naziv:nalog.naziv,
+    dobavitelj:'',datum:new Date().toISOString().slice(0,10),datum_dobave:'',status:'osnutek',opomba:'',artikli,_id:null};
+  renderNarocilnicaDetail();
+  showPanel('narocilnica-detail');
+}
+
+function novaRocnaNarocilnica(){
+  const leto=new Date().getFullYear();
+  aktivnaNarocilnica={stevilka:`NAR-${leto}-XXX`,nalog_id:null,dobavitelj:'',
+    datum:new Date().toISOString().slice(0,10),datum_dobave:'',status:'osnutek',opomba:'',artikli:[],_id:null};
+  renderNarocilnicaDetail();
+  showPanel('narocilnica-detail');
+}
+
+function renderNarocilnicaDetail(){
+  const g=id=>document.getElementById(id);
+  const n=aktivnaNarocilnica;
+  if(g('narc-stevilka'))g('narc-stevilka').value=n.stevilka||'';
+  if(g('narc-dobavitelj'))g('narc-dobavitelj').value=n.dobavitelj||'';
+  if(g('narc-datum'))g('narc-datum').value=n.datum||'';
+  if(g('narc-datum-dobave'))g('narc-datum-dobave').value=n.datum_dobave||'';
+  if(g('narc-status'))g('narc-status').value=n.status||'osnutek';
+  if(g('narc-opomba'))g('narc-opomba').value=n.opomba||'';
+  if(g('narc-title'))g('narc-title').textContent=n.stevilka||'Narocilnica';
+  if(g('narc-sub'))g('narc-sub').textContent=n.nalog_stevilka?`Nalog: ${n.nalog_stevilka}`:' ';
+  if(g('narc-nalog-info'))g('narc-nalog-info').textContent=n.nalog_stevilka?`${n.nalog_stevilka} - ${n.nalog_naziv||''}` :'--';
+  renderNarcArtikli();
+}
+
+function renderNarcArtikli(){
+  const body=document.getElementById('narc-artikli-body');if(!body)return;
+  body.innerHTML=(aktivnaNarocilnica.artikli||[]).map((a,i)=>`<tr>
+    <td><input type="text" value="${a.sestavina_ime||''}" onchange="aktivnaNarocilnica.artikli[${i}].sestavina_ime=this.value" style="min-width:170px"></td>
+    <td><input type="number" value="${a.kolicina||0}" class="inp-blue" onchange="aktivnaNarocilnica.artikli[${i}].kolicina=+this.value" min="0" step="0.001"></td>
+    <td><select onchange="aktivnaNarocilnica.artikli[${i}].enota=this.value" style="max-width:65px;font-size:12px">
+      <option${(a.enota||'kg')==='kg'?' selected':''}>kg</option>
+      <option${a.enota==='l'?' selected':''}>l</option>
+      <option${a.enota==='kos'?' selected':''}>kos</option>
+    </select></td>
+    <td><input type="text" value="${a.dobavitelj||''}" onchange="aktivnaNarocilnica.artikli[${i}].dobavitelj=this.value"></td>
+    <td><input type="number" value="${a.cena_enoto||''}" class="inp-blue" onchange="aktivnaNarocilnica.artikli[${i}].cena_enoto=+this.value" min="0" step="0.001" placeholder="0.000"></td>
+    <td class="td-mono">${f2((a.kolicina||0)*(a.cena_enoto||0))} e</td>
+    <td><select onchange="aktivnaNarocilnica.artikli[${i}].tip=this.value" style="font-size:12px;max-width:100px">
+      <option value="nalog"${a.tip==='nalog'?' selected':''}>Za nalog</option>
+      <option value="skupna"${a.tip==='skupna'?' selected':''}>Skupna zaloga</option>
+      <option value="stranka"${a.tip==='stranka'?' selected':''}>Dostavlja stranka</option>
+    </select></td>
+    <td><button class="btn btn-del" onclick="aktivnaNarocilnica.artikli.splice(${i},1);renderNarcArtikli()">X</button></td>
+  </tr>`).join('');
+}
+
+function addNarcArtikel(){
+  aktivnaNarocilnica.artikli.push({sestavina_ime:'',kolicina:0,enota:'kg',dobavitelj:'',cena_enoto:0,skupaj:0,tip:'nalog'});
+  renderNarcArtikli();
+}
+
+async function shraniNarocilnico(){
+  const g=id=>document.getElementById(id);
+  const obj={stevilka:g('narc-stevilka')?.value||aktivnaNarocilnica.stevilka,
+    delovni_nalog_id:aktivnaNarocilnica.nalog_id||null,dobavitelj:g('narc-dobavitelj')?.value||'',
+    datum:g('narc-datum')?.value||'',datum_dobave:g('narc-datum-dobave')?.value||null,
+    status:g('narc-status')?.value||'osnutek',opomba:g('narc-opomba')?.value||'',
+    artikli:aktivnaNarocilnica.artikli,created_by:currentUser?.id};
+  let error;
+  if(aktivnaNarocilnica._id){({error}=await sb.from('narocilnice').update(obj).eq('id',aktivnaNarocilnica._id));}
+  else{const res=await sb.from('narocilnice').insert({...obj,created_at:new Date().toISOString()}).select().single();error=res.error;if(!error)aktivnaNarocilnica._id=res.data.id;}
+  if(error){notif('Napaka: '+error.message,3500);return;}
+  notif('Narocilnica shranjena');await loadNarocilnice();
+}
+
+async function odpriNarocilnico(id){
+  const{data}=await sb.from('narocilnice').select('*,delovni_nalogi(stevilka,naziv)').eq('id',id).single();
+  if(!data)return;
+  aktivnaNarocilnica={...data,_id:id,nalog_stevilka:data.delovni_nalogi?.stevilka,nalog_naziv:data.delovni_nalogi?.naziv};
+  renderNarocilnicaDetail();showPanel('narocilnica-detail');
+}
+
+async function deleteNarocilnica(id){
+  if(!confirm('Izbrisati narocilnico?'))return;
+  await sb.from('narocilnice').delete().eq('id',id);
+  notif('Izbrisano');await loadNarocilnice();
+}
+
+function izvozNarocilnicaExcel(){
+  const n=aktivnaNarocilnica;
+  const rows=[['NAROCILNICA','','','','','',''],['Stevilka:',n.stevilka,'','','','',''],
+    ['Dobavitelj:',n.dobavitelj||'','','','','',''],['Datum:',n.datum||'','','','','',''],
+    ['Nalog:',n.nalog_stevilka||'','','','','',''],['','','','','','',''],
+    ['Sestavina','Kolicina','Enota','Dobavitelj','Cena/enoto','Skupaj','Tip'],
+    ...(n.artikli||[]).map(a=>[a.sestavina_ime,a.kolicina,a.enota,a.dobavitelj||'',a.cena_enoto||'',f2((a.kolicina||0)*(a.cena_enoto||0)),a.tip])];
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=[{wch:30},{wch:12},{wch:8},{wch:20},{wch:15},{wch:12},{wch:14}];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Narocilnica');
+  XLSX.writeFile(wb,`narocilnica_${n.stevilka||'xxx'}.xlsx`);notif('Excel izvozeno');
+}
+
+// ── IZDAJNICE ─────────────────────────────────────
+let izdajniceData=[];
+let aktivnaIzdajnica={stevilka:'',nalog_id:null,datum:'',izdal:'',prevzel:'',opomba:'',artikli:[],_id:null};
+
+async function loadIzdajnice(){
+  const{data}=await sb.from('izdajnice').select('*,delovni_nalogi(stevilka,naziv)').order('created_at',{ascending:false});
+  izdajniceData=data||[];renderIzdajnice();
+}
+
+function renderIzdajnice(){
+  const el=document.getElementById('izdajnice-lista');if(!el)return;
+  if(!izdajniceData.length){el.innerHTML='<div class="empty">Ni izdajnic.</div>';return;}
+  const statusMap={osnutek:'badge-gray',potrjena:'badge-blue',izdano:'badge-green'};
+  el.innerHTML=izdajniceData.map(i=>`
+    <div class="card" style="margin-bottom:.875rem">
+      <div style="padding:.875rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-weight:500;font-size:14px">${i.stevilka} <span class="text-sm">Nalog: ${i.delovni_nalogi?.stevilka||'-'}</span></div>
+          <div class="text-sm">${i.datum||'-'} Izdal: ${i.izdal||'-'} ${(i.artikli||[]).length} artiklov</div>
+        </div>
+        <div class="flex-gap">
+          <span class="badge ${statusMap[i.status]||'badge-gray'}">${i.status}</span>
+          <button class="btn btn-sm" onclick="odpriIzdajnico('${i.id}')">Odpri</button>
+          <button class="btn btn-del" onclick="deleteIzdajnica('${i.id}')">X</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+async function ustvariIzdajnicoIzNaloga(nalogId){
+  const{data:nalog}=await sb.from('delovni_nalogi').select('*').eq('id',nalogId).single();
+  if(!nalog){notif('Nalog ni najden',2500);return;}
+  const leto=new Date().getFullYear();
+  const{count}=await sb.from('izdajnice').select('*',{count:'exact',head:true});
+  const stevilka=`IZD-${leto}-${String((count||0)+1).padStart(3,'0')}`;
+  const sestavine=nalog.sestavine_coa||[];
+  const artikli=[];
+  for(const s of sestavine){
+    const cid=s.sestavina_id||null;
+    const{data:loti}=await sb.from('zaloga').select('*').eq('status','aktivna')
+      .or(cid?`sestavina_id.eq.${cid},sestavina_ime.ilike.%${s.ime||''}%`:`sestavina_ime.ilike.%${s.ime||''}%`)
+      .order('expiry_date',{ascending:true});
+    const potrebnoKg=+(s.kg||0);let preostalo=potrebnoKg;
+    (loti||[]).forEach(lot=>{
+      if(preostalo<=0)return;
+      const izd=Math.min(lot.kolicina,preostalo);
+      artikli.push({zaloga_id:lot.id,sestavina_ime:lot.sestavina_ime,lot:lot.lot||'',
+        razdelek_id:lot.razdelek_id||null,na_zalogi:lot.kolicina,potrebno_kg:potrebnoKg,
+        kolicina_izdana:+izd.toFixed(4),expiry_date:lot.expiry_date||'',enota:lot.enota||'kg'});
+      preostalo-=izd;
+    });
+    if(preostalo>0.001)artikli.push({zaloga_id:null,sestavina_ime:s.ime||'?',lot:'-- NI NA ZALOGI --',
+      razdelek_id:null,na_zalogi:0,potrebno_kg:potrebnoKg,kolicina_izdana:0,expiry_date:'',enota:'kg',_manjka:preostalo});
+  }
+  aktivnaIzdajnica={stevilka,nalog_id:nalogId,nalog_stevilka:nalog.stevilka,nalog_naziv:nalog.naziv,
+    datum:new Date().toISOString().slice(0,10),izdal:'',prevzel:'',opomba:'',artikli,_id:null};
+  renderIzdajnicaDetail();showPanel('izdajnica-detail');
+}
+
+function renderIzdajnicaDetail(){
+  const g=id=>document.getElementById(id);const izd=aktivnaIzdajnica;
+  if(g('izd-stevilka'))g('izd-stevilka').value=izd.stevilka||'';
+  if(g('izd-datum'))g('izd-datum').value=izd.datum||'';
+  if(g('izd-izdal'))g('izd-izdal').value=izd.izdal||'';
+  if(g('izd-prevzel'))g('izd-prevzel').value=izd.prevzel||'';
+  if(g('izd-opomba'))g('izd-opomba').value=izd.opomba||'';
+  if(g('izd-title'))g('izd-title').textContent=izd.stevilka||'Izdajnica';
+  if(g('izd-sub'))g('izd-sub').textContent=izd.nalog_stevilka?`Nalog: ${izd.nalog_stevilka}`:'';
+  if(g('izd-nalog-info'))g('izd-nalog-info').textContent=izd.nalog_stevilka?`${izd.nalog_stevilka} - ${izd.nalog_naziv||''}` :'--';
+  const body=g('izd-artikli-body');if(!body)return;
+  body.innerHTML=(izd.artikli||[]).map((a,i)=>`<tr style="${a._manjka?'background:var(--danger-light)':''}">
+    <td style="font-weight:500">${a.sestavina_ime}${a._manjka?`<div class="text-sm" style="color:var(--danger)">Manjka ${f4(a._manjka)} kg</div>`:''}</td>
+    <td style="font-family:var(--mono);font-size:12px">${a.lot}</td>
+    <td style="font-size:12px">${razdelkiData.find(r=>r.id===a.razdelek_id)?.ime||'--'}</td>
+    <td class="td-mono">${f4(a.na_zalogi)} ${a.enota}</td>
+    <td class="td-mono">${f4(a.potrebno_kg)} ${a.enota}</td>
+    <td><input type="number" value="${a.kolicina_izdana}" class="inp-blue" min="0" step="0.001" max="${a.na_zalogi}"
+      onchange="aktivnaIzdajnica.artikli[${i}].kolicina_izdana=+this.value" style="max-width:100px;font-family:var(--mono)"></td>
+    <td style="font-size:12px">${a.expiry_date||'--'}</td>
+  </tr>`).join('');
+}
+
+async function odpriIzdajnico(id){
+  const{data}=await sb.from('izdajnice').select('*,delovni_nalogi(stevilka,naziv)').eq('id',id).single();
+  if(!data)return;
+  aktivnaIzdajnica={...data,_id:id,nalog_stevilka:data.delovni_nalogi?.stevilka,nalog_naziv:data.delovni_nalogi?.naziv};
+  renderIzdajnicaDetail();showPanel('izdajnica-detail');
+}
+
+async function deleteIzdajnica(id){
+  if(!confirm('Izbrisati izdajnico?'))return;
+  await sb.from('izdajnice').delete().eq('id',id);notif('Izbrisano');await loadIzdajnice();
+}
+
+async function potrdiIzdajnico(){
+  const g=id=>document.getElementById(id);
+  const obj={stevilka:g('izd-stevilka')?.value||aktivnaIzdajnica.stevilka,
+    delovni_nalog_id:aktivnaIzdajnica.nalog_id||null,datum:g('izd-datum')?.value||'',
+    izdal:g('izd-izdal')?.value||'',prevzel:g('izd-prevzel')?.value||'',
+    opomba:g('izd-opomba')?.value||'',artikli:aktivnaIzdajnica.artikli,
+    status:'izdano',created_by:currentUser?.id};
+  for(const a of aktivnaIzdajnica.artikli){
+    if(!a.zaloga_id||!a.kolicina_izdana)continue;
+    const{data:lot}=await sb.from('zaloga').select('kolicina').eq('id',a.zaloga_id).single();
+    if(!lot)continue;
+    const novaKol=+(lot.kolicina-a.kolicina_izdana).toFixed(6);
+    await sb.from('zaloga').update({kolicina:Math.max(0,novaKol),status:novaKol<=0?'porabljena':'aktivna'}).eq('id',a.zaloga_id);
+  }
+  let error;
+  if(aktivnaIzdajnica._id){({error}=await sb.from('izdajnice').update(obj).eq('id',aktivnaIzdajnica._id));}
+  else{const res=await sb.from('izdajnice').insert({...obj,created_at:new Date().toISOString()}).select().single();error=res.error;if(!error)aktivnaIzdajnica._id=res.data.id;}
+  if(error){notif('Napaka: '+error.message,3500);return;}
+  if(aktivnaIzdajnica.nalog_id)await sb.from('delovni_nalogi').update({status:'produkcija',sestavine_status:'izdano'}).eq('id',aktivnaIzdajnica.nalog_id);
+  notif('Izdajnica potrjena - zaloga posodobljena');
+  showPanel('izdajnice');loadIzdajnice();loadZaloga();
+}
+
+// ── POVRATNICE ────────────────────────────────────
+let povratniceData=[];
+let aktivnaPovratnica={stevilka:'',nalog_id:null,izdajnica_id:null,datum:'',vrnil:'',prejel:'',opomba:'',artikli:[],_id:null};
+
+async function loadPovratnice(){
+  const{data}=await sb.from('povratnice').select('*,delovni_nalogi(stevilka,naziv)').order('created_at',{ascending:false});
+  povratniceData=data||[];renderPovratnice();
+}
+
+function renderPovratnice(){
+  const el=document.getElementById('povratnice-lista');if(!el)return;
+  if(!povratniceData.length){el.innerHTML='<div class="empty">Ni povratnic.</div>';return;}
+  el.innerHTML=povratniceData.map(p=>`
+    <div class="card" style="margin-bottom:.875rem">
+      <div style="padding:.875rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-weight:500;font-size:14px">${p.stevilka} <span class="text-sm">Nalog: ${p.delovni_nalogi?.stevilka||'-'}</span></div>
+          <div class="text-sm">${p.datum||'-'} Vrnil: ${p.vrnil||'-'}</div>
+        </div>
+        <div class="flex-gap">
+          <span class="badge ${p.status==='potrjena'?'badge-green':'badge-gray'}">${p.status||'osnutek'}</span>
+          <button class="btn btn-sm" onclick="odpriPovratnico('${p.id}')">Odpri</button>
+          <button class="btn btn-del" onclick="deletePovratnica('${p.id}')">X</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+async function ustvariPovratnicoIzIzdajnice(izdajnicaId){
+  const{data:izd}=await sb.from('izdajnice').select('*,delovni_nalogi(stevilka,naziv)').eq('id',izdajnicaId).single();
+  if(!izd)return;
+  const leto=new Date().getFullYear();
+  const{count}=await sb.from('povratnice').select('*',{count:'exact',head:true});
+  const stevilka=`POV-${leto}-${String((count||0)+1).padStart(3,'0')}`;
+  const artikli=(izd.artikli||[]).filter(a=>a.zaloga_id&&a.kolicina_izdana>0).map(a=>({
+    sestavina_ime:a.sestavina_ime,lot_original:a.lot,zaloga_id:a.zaloga_id,
+    kolicina_vrnjeno:0,razdelek_id:a.razdelek_id||null,expiry_date:a.expiry_date||'',enota:a.enota||'kg'}));
+  aktivnaPovratnica={stevilka,nalog_id:izd.delovni_nalog_id,nalog_stevilka:izd.delovni_nalogi?.stevilka,
+    nalog_naziv:izd.delovni_nalogi?.naziv,izdajnica_id:izdajnicaId,
+    datum:new Date().toISOString().slice(0,10),vrnil:'',prejel:'',opomba:'',artikli,_id:null};
+  renderPovratnicaDetail();showPanel('povratnica-detail');
+}
+
+function renderPovratnicaDetail(){
+  const g=id=>document.getElementById(id);const p=aktivnaPovratnica;
+  if(g('pov-stevilka'))g('pov-stevilka').value=p.stevilka||'';
+  if(g('pov-datum'))g('pov-datum').value=p.datum||'';
+  if(g('pov-vrnil'))g('pov-vrnil').value=p.vrnil||'';
+  if(g('pov-prejel'))g('pov-prejel').value=p.prejel||'';
+  if(g('pov-opomba'))g('pov-opomba').value=p.opomba||'';
+  if(g('pov-title'))g('pov-title').textContent=p.stevilka||'Povratnica';
+  if(g('pov-sub'))g('pov-sub').textContent=p.nalog_stevilka?`Nalog: ${p.nalog_stevilka}`:'';
+  if(g('pov-nalog-info'))g('pov-nalog-info').textContent=p.nalog_stevilka?`${p.nalog_stevilka} - ${p.nalog_naziv||''}` :'--';
+  renderPovArtikli();
+}
+
+function renderPovArtikli(){
+  const body=document.getElementById('pov-artikli-body');if(!body)return;
+  body.innerHTML=(aktivnaPovratnica.artikli||[]).map((a,i)=>`<tr>
+    <td style="font-weight:500">${a.sestavina_ime}</td>
+    <td style="font-family:var(--mono);font-size:12px">${a.lot_original||'--'}</td>
+    <td><input type="number" value="${a.kolicina_vrnjeno||0}" class="inp-blue" min="0" step="0.001"
+      onchange="aktivnaPovratnica.artikli[${i}].kolicina_vrnjeno=+this.value" style="max-width:100px;font-family:var(--mono)"></td>
+    <td><select onchange="aktivnaPovratnica.artikli[${i}].razdelek_id=this.value" style="font-size:12px">
+      <option value="">-- Razdelek --</option>
+      ${razdelkiData.map(r=>`<option value="${r.id}"${r.id===a.razdelek_id?' selected':''}>${r.ime}</option>`).join('')}
+    </select></td>
+    <td style="font-size:12px">${a.expiry_date||'--'}</td>
+  </tr>`).join('');
+}
+
+function addPovArtikel(){
+  aktivnaPovratnica.artikli.push({sestavina_ime:'',lot_original:'',kolicina_vrnjeno:0,razdelek_id:null,expiry_date:'',enota:'kg'});
+  renderPovArtikli();
+}
+
+async function odpriPovratnico(id){
+  const{data}=await sb.from('povratnice').select('*,delovni_nalogi(stevilka,naziv)').eq('id',id).single();
+  if(!data)return;
+  aktivnaPovratnica={...data,_id:id,nalog_stevilka:data.delovni_nalogi?.stevilka,nalog_naziv:data.delovni_nalogi?.naziv};
+  renderPovratnicaDetail();showPanel('povratnica-detail');
+}
+
+async function deletePovratnica(id){
+  if(!confirm('Izbrisati povratnico?'))return;
+  await sb.from('povratnice').delete().eq('id',id);notif('Izbrisano');await loadPovratnice();
+}
+
+async function potrdiPovratnico(){
+  const g=id=>document.getElementById(id);
+  const obj={stevilka:g('pov-stevilka')?.value||aktivnaPovratnica.stevilka,
+    delovni_nalog_id:aktivnaPovratnica.nalog_id||null,izdajnica_id:aktivnaPovratnica.izdajnica_id||null,
+    datum:g('pov-datum')?.value||'',vrnil:g('pov-vrnil')?.value||'',prejel:g('pov-prejel')?.value||'',
+    opomba:g('pov-opomba')?.value||'',artikli:aktivnaPovratnica.artikli,status:'potrjena',created_by:currentUser?.id};
+  for(const a of aktivnaPovratnica.artikli){
+    if(!a.kolicina_vrnjeno||a.kolicina_vrnjeno<=0)continue;
+    if(a.zaloga_id){
+      const{data:lot}=await sb.from('zaloga').select('kolicina').eq('id',a.zaloga_id).single();
+      if(lot)await sb.from('zaloga').update({kolicina:+(lot.kolicina+a.kolicina_vrnjeno).toFixed(6),status:'aktivna',razdelek_id:a.razdelek_id||lot.razdelek_id}).eq('id',a.zaloga_id);
+    } else {
+      await sb.from('zaloga').insert({sestavina_ime:a.sestavina_ime,lot:(a.lot_original||'')+'_POV',enota:a.enota||'kg',
+        kolicina:+a.kolicina_vrnjeno,expiry_date:a.expiry_date||null,razdelek_id:a.razdelek_id||null,status:'aktivna',opomba:'Vrnjena iz mesalnice'});
+    }
+  }
+  let error;
+  if(aktivnaPovratnica._id){({error}=await sb.from('povratnice').update(obj).eq('id',aktivnaPovratnica._id));}
+  else{const res=await sb.from('povratnice').insert({...obj,created_at:new Date().toISOString()}).select().single();error=res.error;}
+  if(error){notif('Napaka: '+error.message,3500);return;}
+  notif('Povratnica potrjena - zaloga posodobljena');
+  showPanel('povratnice');loadPovratnice();loadZaloga();
+}
+
+// ── INIT ──────────────────────────────────────────
+renderKolRows();
+initAuth();
+</script>
+</body>
+</html>
