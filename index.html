@@ -1362,6 +1362,14 @@ let zalogaData = [];
 // ── HELPERS ────────────────────────────────────────────────
 function f2(n){return(+n).toLocaleString('sl-SI',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function f4(n){return(+n).toLocaleString('sl-SI',{minimumFractionDigits:4,maximumFractionDigits:4});}
+// Prikazuje kg pametno — majhne vrednosti z vec decimalnimi mesti
+function fKg(n){
+  if(!n)return '0';
+  if(n<0.001)return(+n).toLocaleString('sl-SI',{minimumFractionDigits:6,maximumFractionDigits:6});
+  if(n<0.01)return(+n).toLocaleString('sl-SI',{minimumFractionDigits:5,maximumFractionDigits:5});
+  if(n<0.1)return(+n).toLocaleString('sl-SI',{minimumFractionDigits:4,maximumFractionDigits:4});
+  return f4(n);
+}
 function fN(n){return Math.round(n).toLocaleString('sl-SI');}
 
 function notif(msg,dur=2200){
@@ -1905,8 +1913,9 @@ function getCenikCena(c,kg){
   if(!c)return 0;
   const min=getMinNarocilo(c);
   if(!min)return 0;
-  // Ce kolicina je manjsa od minimalnega narocila, vrni 0
-  if(kg<min.kg)return 0;
+  // Ce kolicina je manjsa od minimalnega narocila — vrni ceno min narocila
+  // (obracuna se min narocilo, sestavina se kupuje v manjsi kolicini)
+  if(kg<min.kg)return min.cena;
   // Poisci najvisji razred ki je <= kg in ima ceno
   let cena=min.cena;
   for(let i=min.idx;i<TIER_COLS.length;i++){
@@ -1948,13 +1957,16 @@ function izracunaj(){
       const c=(cenikSestavineData||[]).find(x=>x.id===f.sestavina_id);
       const kol_mg=f.kol*(1+(f.izguba||0)/100);
       const kg=(kol_mg/1e6)*kol_ob;
-      const kg_ob=f.min_ob>0?Math.max(kg,f.min_ob):kg;
-      const cena_kg=getCenikCena(c,kg_ob);
+      // Min obracun: vzemi vecjega od dejanskega kg ali min_ob ali minimalnega narocila iz cenika
+      const minNar=c?getMinNarocilo(c):null;
+      const minKg=minNar?minNar.kg:0;
+      const kg_ob=Math.max(kg, f.min_ob||0, minKg>kg?minKg:0);
+      const cena_kg=c?getCenikCena(c,kg_ob)||getCenikCena(c,minKg)||0:0;
       const strosek=kg_ob*cena_kg;
       sest_skupaj+=strosek;
       let akt_ti=0;
       for(let ti=0;ti<TIER_KG.length;ti++){if(kg_ob>=TIER_KG[ti])akt_ti=ti;}
-      return{ime:c?c.ime:'?',dobavitelj:c?c.dobavitelj:'',kg,kg_ob,cena_kg,akt_ti,strosek,min_ob:f.min_ob||0};
+      return{ime:c?c.ime:'?',dobavitelj:c?c.dobavitelj:'',kg,kg_ob,cena_kg,akt_ti,strosek,min_ob:f.min_ob||0,kol_mg};
     });
 
     const pot_strosek = getPotrosniSkupaj();
@@ -2023,7 +2035,7 @@ function renderRezultat({naziv,tip,tip_kaps,stroj,rezultati,marza_pct,stranka,od
         <div style="font-size:13px">
           ${r.sest_d.filter(s=>s.strosek>0).map(s=>`
           <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px">
-            <span style="color:var(--text2)">${s.ime} — ${f4(s.kg_ob)} kg × ${f2(s.cena_kg)} €/kg</span>
+            <span style="color:var(--text2)">${s.ime} — ${fKg(s.kg_ob)} kg × ${f2(s.cena_kg)} €/kg</span>
             <span class="text-mono">${f2(s.strosek)} €</span>
           </div>`).join('')}
           <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px">
@@ -4522,7 +4534,7 @@ function renderNPRezultat(){
           ${r.sest_d.map(s=>`<tr>
             <td>${s.ime}</td>
             <td class="td-mono">${s.kolicina} mg</td>
-            <td class="td-mono">${f4(s.kg)} kg</td>
+            <td class="td-mono">${fKg(s.kg)} kg</td>
             <td class="td-mono">${s.cena_kg?f2(s.cena_kg)+' €':'<span class="badge badge-warn" style="font-size:10px">Ni cene</span>'}</td>
             <td class="td-mono">${s.cena_kg?f2(s.strosek)+' €':'—'}</td>
           </tr>`).join('')}
